@@ -70,6 +70,7 @@ parser.add_argument("--lr", type=float, default=0.0005)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--val_batch_size", type=int, default=25)
 parser.add_argument("--max_iteration", type=int, default=500000)
+parser.add_argument("--num_worker", type=int, default=8)
 # log param
 parser.add_argument("--log_dir", type=str, default="./logs/")
 parser.add_argument("--log_freq", type=int, default=10000)
