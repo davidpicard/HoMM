@@ -2,6 +2,7 @@ import argparse
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard.writer import SummaryWriter
 import torchinfo
 from torchvision import transforms
 from torchvision.datasets import ImageNet
@@ -34,11 +35,9 @@ def build_imagenet(data_dir, device="cuda", size=224):
 
 
 def eval(model, val_ds, criterion):
-    n_val = len(val_ds)
     model.eval()
     val_loss = []
     val_acc = []
-    i = 1
     with tqdm(val_ds) as val:
         for imgs, lbls in val:
             imgs = imgs.to(device)
@@ -47,64 +46,75 @@ def eval(model, val_ds, criterion):
             val_loss.append(criterion(outputs, lbls).detach().cpu())
             val_acc.append(((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu())
             val.set_postfix_str(s='val loss {:5.02f} val acc {:5.02f}'.format(torch.stack(val_loss).mean(), 100. * torch.stack(val_acc).mean()))
-            i += 1
-    return torch.stack(val_loss).mean().item(), 100. * torch.stack(val_acc).mean().item()
+    return torch.stack(val_loss).mean().item(), torch.stack(val_acc).mean().item()
 
 
 #############
-
-dim = 128
-im_size = 256
-kernel_size = 16
-nb_layers = 4
-order = 4
-order_expand = 8
-ffw_expand = 4
-
-lr = 0.00005
-batch_size = 48
-v_batch_size = 10
-epoch = 100
 
 device = "cuda"
 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--data_dir", help="path to imagenet")
-parser.add_argument("--seed", type=int, default=0)
+parser.add_argument("--seed", type=int, default=3407)
+# model param
+parser.add_argument("--dim", type=int, default=128)
+parser.add_argument("--size", type=int, default=256)
+parser.add_argument("--kernel_size", type=int, default=16)
+parser.add_argument("--nb_layers", type=int, default=8)
+parser.add_argument("--order", type=int, default=4)
+parser.add_argument("--order-expand", type=int, default=8)
+parser.add_argument("--ffw_expand", type=int, default=4)
+# training params
+parser.add_argument("--lr", type=float, default=0.0005)
+parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--val_batch_size", type=int, default=25)
+parser.add_argument("--max_iteration", type=int, default=500000)
+# log param
+parser.add_argument("--log_dir", type=str, default="./logs/")
+parser.add_argument("--log_freq", type=int, default=10000)
+parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints/")
 args = parser.parse_args()
 
 s = args.seed
 torch.manual_seed(s)
 
-train, val = build_imagenet(args.data_dir, size=im_size)
-train_ds = DataLoader(train, batch_size=batch_size, num_workers=4, shuffle=True)
-val_ds = DataLoader(val, batch_size=v_batch_size, num_workers=2)
+train, val = build_imagenet(args.data_dir, size=args.size)
+train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=4, shuffle=True)
+val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
+epoch = args.max_iteration // n_train + 1
 
 tr_loss = []
 tr_acc = []
 
-model = HoMVision(1000, dim, im_size, kernel_size, nb_layers, order, order_expand, ffw_expand)
+model = HoMVision(1000, args.dim, args.size, args.kernel_size, args.nb_layers, args.order, args.order_expand,
+                  args.ffw_expand)
 model = model.to(device)
 
-optimizer = torch.optim.Adam(params=model.parameters(), lr=lr)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=args.lr)
 scaler = torch.cuda.amp.GradScaler(enabled=True)
-sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=lr, total_steps=epoch*n_train, anneal_strategy='cos', pct_start=8000/(epoch*n_train))
+sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
+                                            anneal_strategy='cos', pct_start=10000/args.max_iteration)
 
 print('model and optimizer built')
 
 
-x = torch.randn((8, 3, im_size, im_size)).to(device)
-torchinfo.summary(model, input_data=x.to(device))
 
 criterion = nn.CrossEntropyLoss()
 
-for e in range(epoch):  # loop over the dataset multiple times
-    running_loss = []
-    running_acc = []
-    i = 1
+model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
+                                                   args.nb_layers, args.order, args.order_expand, args.ffw_expand)
+train_writer = SummaryWriter(args.log_dir+"/train/"+model_name)
+val_writer =  SummaryWriter(args.log_dir+"/val"+model_name)
 
+
+x = torch.randn((8, 3, args.size, args.size)).to(device)
+torchinfo.summary(model, input_data=x.to(device))
+train_writer.add_graph(model, x)
+
+i = 1
+for e in range(epoch):  # loop over the dataset multiple times
     with tqdm(train_ds, desc='Epoch={}'.format(e)) as tepoch:
         for imgs, lbls in tepoch:
             imgs = imgs.to(device)
@@ -127,17 +137,24 @@ for e in range(epoch):  # loop over the dataset multiple times
             scaler.update()
             sched.step()
             # print statistics
-            running_loss.append(loss.detach().cpu())
-            running_acc.append(((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu())
+            running_loss = loss.detach().cpu()
+            running_acc = ((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu()
 
-            tepoch.set_postfix_str(s='loss: {:5.02f} acc: {:5.02f}'.format(torch.stack(running_loss).mean(),
-                                                              100 * torch.stack(running_acc).mean(), end='\r'))
+            train_writer.add_scalar("loss", running_loss, global_step=i)
+            train_writer.add_scalar("acc", running_acc, global_step=i)
+            tepoch.set_postfix_str(s='loss: {:5.02f} acc: {:5.02f}'.format(running_loss, 100 * running_acc))
 
-            if i % 10000 == 0:
+            if i % args.log_freq == 0:
                 l, a = eval(model, val_ds, criterion)
-                tr_loss.append(l)
-                tr_acc.append(a)
+                val_writer.add_scalar("loss", l, global_step=i)
+                val_writer.add_scalar("acc", a, global_step=i)
                 model.train()
+
+                checkpoint = {"model": model.state_dict(),
+                              "optimizer": optimizer.state_dict(),
+                              "scaler": scaler.state_dict()
+                              }
+                torch.save(checkpoint, "{}/{}.ckpt".format(args.checkpoint_dir, model_name))
             i += 1
 
 
