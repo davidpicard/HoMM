@@ -73,7 +73,7 @@ parser.add_argument("--max_iteration", type=int, default=500000)
 parser.add_argument("--num_worker", type=int, default=8)
 # log param
 parser.add_argument("--log_dir", type=str, default="./logs/")
-parser.add_argument("--log_freq", type=int, default=10000)
+parser.add_argument("--log_freq", type=int, default=5000)
 parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints/")
 args = parser.parse_args()
 
