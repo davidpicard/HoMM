@@ -107,7 +107,7 @@ criterion = nn.CrossEntropyLoss()
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
 train_writer = SummaryWriter(args.log_dir+"/train/"+model_name)
-val_writer =  SummaryWriter(args.log_dir+"/val"+model_name)
+val_writer =  SummaryWriter(args.log_dir+"/val/"+model_name)
 
 
 x = torch.randn((8, 3, args.size, args.size)).to(device)
