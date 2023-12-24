@@ -63,7 +63,7 @@ parser.add_argument("--size", type=int, default=256)
 parser.add_argument("--kernel_size", type=int, default=16)
 parser.add_argument("--nb_layers", type=int, default=8)
 parser.add_argument("--order", type=int, default=4)
-parser.add_argument("--order-expand", type=int, default=8)
+parser.add_argument("--order_expand", type=int, default=8)
 parser.add_argument("--ffw_expand", type=int, default=4)
 # training params
 parser.add_argument("--lr", type=float, default=0.0005)
@@ -106,6 +106,7 @@ criterion = nn.CrossEntropyLoss()
 
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
+print('training model {}'.format(model_name))
 train_writer = SummaryWriter(args.log_dir+"/train/"+model_name)
 val_writer =  SummaryWriter(args.log_dir+"/val/"+model_name)
 
