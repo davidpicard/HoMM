@@ -23,7 +23,7 @@ class HoMLayer(nn.Module):
         b, n, d = x.shape
 
         # high order
-        h = F.tanh(self.ho_proj(x))
+        h = F.tanh(self.ho_proj(self.ho_drop(x)))
         h = list(h.chunk(self.order, dim=-1))
         for i in range(1, self.order):
             h[i] = h[i] * h[i-1]
@@ -35,7 +35,7 @@ class HoMLayer(nn.Module):
         sh = s * h
 
         # aggregation
-        x = x + self.ho_drop(self.ag_proj(sh))
+        x = x + self.ag_proj(sh)
 
         # ffw
         x = x + self.ffw(x)
