@@ -154,7 +154,8 @@ for e in range(epoch):  # loop over the dataset multiple times
 
                 checkpoint = {"model": model.state_dict(),
                               "optimizer": optimizer.state_dict(),
-                              "scaler": scaler.state_dict()
+                              "scaler": scaler.state_dict(),
+                              "global_step": torch.tensor(i)
                               }
                 torch.save(checkpoint, "{}/{}.ckpt".format(args.checkpoint_dir, model_name))
             i += 1
