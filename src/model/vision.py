@@ -4,7 +4,7 @@ import torch.nn as nn
 from .layers import HoMLayer
 
 class HoMVision(nn.Module):
-    def __init__(self, nb_classes, dim=256, im_size=256, kernel_size=16, nb_layers=12, order=4, order_expand=8, ffw_expand=4):
+    def __init__(self, nb_classes, dim=256, im_size=256, kernel_size=16, nb_layers=12, order=4, order_expand=8, ffw_expand=4, dropout=0.):
         super().__init__()
         self.nb_classes = nb_classes
         self.dim = dim
@@ -16,7 +16,7 @@ class HoMVision(nn.Module):
         self.ffw_expand = ffw_expand
 
         self.conv = nn.Conv2d(3, dim, kernel_size=kernel_size, stride=kernel_size)
-        self.layers = nn.ModuleList([HoMLayer(dim, order, order_expand, ffw_expand) for i in range(nb_layers)])
+        self.layers = nn.ModuleList([HoMLayer(dim, order, order_expand, ffw_expand, dropout=dropout) for i in range(nb_layers)])
         self.out_proj = nn.Linear(dim, nb_classes)
 
         n = (im_size//kernel_size)**2
