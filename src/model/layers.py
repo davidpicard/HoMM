@@ -13,7 +13,9 @@ class HoMLayer(nn.Module):
         self.ho_proj = nn.Linear(dim, order*order_expand*dim)
         self.se_proj = nn.Linear(dim, order*order_expand*dim)
         self.ag_proj = nn.Linear(order*order_expand*dim, dim)
-        self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand*dim),
+        self.ho_drop = nn.Dropout(p=0.1)
+        self.ffw = nn.Sequential(nn.Dropout(p=0.1),
+                                 nn.Linear(dim, ffw_expand*dim),
                                  nn.GELU(),
                                  nn.Linear(ffw_expand*dim, dim))
 
@@ -33,7 +35,7 @@ class HoMLayer(nn.Module):
         sh = s * h
 
         # aggregation
-        x = x + self.ag_proj(sh)
+        x = x + self.ho_drop(self.ag_proj(sh))
 
         # ffw
         x = x + self.ffw(x)
