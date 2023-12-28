@@ -16,14 +16,17 @@ def build_imagenet(data_dir, device="cuda", size=224):
                                      std=[0.229, 0.224, 0.225])
 
     transform_train = transforms.Compose([
-        transforms.RandomResizedCrop(size),
+        # transforms.RandomResizedCrop(size),
+        transforms.Resize(size),
+        transforms.RandomCrop(size),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         normalize
     ])
 
     transform_val = transforms.Compose([
-        transforms.Resize(int(1.14*size)),
+        # transforms.Resize(int(1.14*size)),
+        transforms.Resize(size),
         transforms.CenterCrop(size),
         transforms.ToTensor(),
         normalize
@@ -103,7 +106,7 @@ print('model and optimizer built')
 
 
 
-criterion = nn.CrossEntropyLoss()
+criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
 
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
