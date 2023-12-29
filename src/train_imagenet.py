@@ -70,6 +70,7 @@ parser.add_argument("--order", type=int, default=4)
 parser.add_argument("--order_expand", type=int, default=8)
 parser.add_argument("--ffw_expand", type=int, default=4)
 parser.add_argument("--dropout", type=float, default=0.1)
+parser.add_argument("--wd", type=float, default=0.0)
 # training params
 parser.add_argument("--lr", type=float, default=0.0005)
 parser.add_argument("--batch_size", type=int, default=128)
@@ -86,7 +87,7 @@ s = args.seed
 torch.manual_seed(s)
 
 train, val = build_imagenet(args.data_dir, size=args.size)
-train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, persistent_workers=True, prefetch_factor=4)
+train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, persistent_workers=True, prefetch_factor=4, pin_memory=True)
 val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
 epoch = args.max_iteration // n_train + 1
@@ -102,7 +103,7 @@ model = HoMVision(1000, args.dim, args.size, args.kernel_size, args.nb_layers, a
                   args.ffw_expand, args.dropout)
 model = model.to(device)
 
-optimizer = torch.optim.Adam(params=model.parameters(), lr=args.lr)
+optimizer = torch.optim.Adam(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
 scaler = torch.cuda.amp.GradScaler(enabled=True)
 sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
                                             anneal_strategy='cos', pct_start=10000/args.max_iteration)
