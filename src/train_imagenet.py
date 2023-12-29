@@ -112,7 +112,7 @@ print('model and optimizer built')
 
 
 # criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-criterion = nn.BCEWithLogitsLoss(999)
+criterion = nn.BCEWithLogitsLoss(999*torch.ones(1))
 
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
