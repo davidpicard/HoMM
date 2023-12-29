@@ -19,7 +19,7 @@ def build_imagenet(data_dir, device="cuda", size=224):
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(size, scale=(0.6, 1.0), ratio=(0.9, 1.1)),
         # transforms.Resize(size),
-        transforms.RandomCrop(size),
+        # transforms.RandomCrop(size),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         normalize
@@ -27,7 +27,7 @@ def build_imagenet(data_dir, device="cuda", size=224):
 
     transform_val = transforms.Compose([
         transforms.Resize(int(size/0.95)),
-        transforms.Resize(size),
+        # transforms.Resize(size),
         transforms.CenterCrop(size),
         transforms.ToTensor(),
         normalize
