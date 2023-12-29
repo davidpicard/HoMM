@@ -138,7 +138,7 @@ for e in range(epoch):  # loop over the dataset multiple times
 
 
             # cutmix augment augment
-            if torch.rand(1) > 0.8:
+            if torch.rand(1) < 0.8:
                 imgs, lbls = cutmix_or_mixup(imgs, lbls)
             else:
                 lbls = nn.functional.one_hot(lbls, num_classes=1000).float()
