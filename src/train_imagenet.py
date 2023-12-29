@@ -130,12 +130,13 @@ for e in range(epoch):  # loop over the dataset multiple times
     with tqdm(train_ds, desc='Epoch={}'.format(e)) as tepoch:
         for imgs, lbls in tepoch:
 
-            # some augment
-            imgs, lbls = cutmix_or_mixup(imgs, lbls)
-
             # to gpu
             imgs = imgs.to(device)
             lbls = lbls.to(device)
+
+
+            # cutmix augment augment
+            imgs, lbls = cutmix_or_mixup(imgs, lbls)
 
             optimizer.zero_grad()
 
