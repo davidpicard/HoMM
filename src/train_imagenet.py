@@ -155,7 +155,7 @@ for e in range(epoch):  # loop over the dataset multiple times
             sched.step()
             # print statistics
             running_loss = loss.detach().cpu()
-            running_acc = ((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu()
+            running_acc = ((outputs.argmax(dim=1) == lbls.argmax(dim=1)).sum() / lbls.shape[0]).detach().cpu()
 
             train_writer.add_scalar("loss", running_loss, global_step=i)
             train_writer.add_scalar("acc", running_acc, global_step=i)
