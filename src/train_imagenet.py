@@ -16,8 +16,8 @@ def build_imagenet(data_dir, device="cuda", size=224):
                                      std=[0.229, 0.224, 0.225])
 
     transform_train = transforms.Compose([
-        # transforms.RandomResizedCrop(size),
-        transforms.Resize(size),
+        transforms.RandomResizedCrop(size, scale=(0.6, 1.0), ratio=(0.9, 1.1)),
+        # transforms.Resize(size),
         transforms.RandomCrop(size),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
@@ -25,7 +25,7 @@ def build_imagenet(data_dir, device="cuda", size=224):
     ])
 
     transform_val = transforms.Compose([
-        # transforms.Resize(int(1.14*size)),
+        transforms.Resize(int(size/0.95)),
         transforms.Resize(size),
         transforms.CenterCrop(size),
         transforms.ToTensor(),
@@ -90,6 +90,10 @@ val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
 epoch = args.max_iteration // n_train + 1
 
+cutmix = transforms.v2.CutMix(num_classes=1000)
+mixup = transforms.v2.MixUp(num_classes=1000)
+cutmix_or_mixup = transforms.v2.RandomChoice([cutmix, mixup])
+
 tr_loss = []
 tr_acc = []
 
@@ -106,7 +110,8 @@ print('model and optimizer built')
 
 
 
-criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+# criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+criterion = nn.BCEWithLogitsLoss()
 
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
@@ -123,6 +128,11 @@ i = 1
 for e in range(epoch):  # loop over the dataset multiple times
     with tqdm(train_ds, desc='Epoch={}'.format(e)) as tepoch:
         for imgs, lbls in tepoch:
+
+            # some augment
+            imgs, lbls = cutmix_or_mixup(imgs, lbls)
+
+            # to gpu
             imgs = imgs.to(device)
             lbls = lbls.to(device)
 
