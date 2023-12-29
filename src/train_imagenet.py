@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 import torchinfo
 from torchvision import transforms
+from torchvision.transforms import v2
 from torchvision.datasets import ImageNet
 from tqdm import tqdm
 
@@ -90,9 +91,9 @@ val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
 epoch = args.max_iteration // n_train + 1
 
-cutmix = transforms.v2.CutMix(num_classes=1000)
-mixup = transforms.v2.MixUp(num_classes=1000)
-cutmix_or_mixup = transforms.v2.RandomChoice([cutmix, mixup])
+cutmix = v2.CutMix(num_classes=1000)
+mixup = v2.MixUp(num_classes=1000)
+cutmix_or_mixup = v2.RandomChoice([cutmix, mixup])
 
 tr_loss = []
 tr_acc = []
