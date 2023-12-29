@@ -47,7 +47,7 @@ def eval(model, val_ds, criterion):
             imgs = imgs.to(device)
             lbls = lbls.to(device)
             outputs = model(imgs)
-            val_loss.append(criterion(outputs, lbls).detach().cpu())
+            val_loss.append(criterion(outputs, nn.functional.one_hot(lbls, num_classes=1000)).detach().cpu())
             val_acc.append(((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu())
             val.set_postfix_str(s='val loss {:5.02f} val acc {:5.02f}'.format(torch.stack(val_loss).mean(), 100. * torch.stack(val_acc).mean()))
     return torch.stack(val_loss).mean().item(), torch.stack(val_acc).mean().item()
