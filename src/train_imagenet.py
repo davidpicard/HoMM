@@ -47,7 +47,8 @@ def eval(model, val_ds, criterion):
             imgs = imgs.to(device)
             lbls = lbls.to(device)
             outputs = model(imgs)
-            val_loss.append(criterion(outputs, nn.functional.one_hot(lbls, num_classes=1000).float()).detach().cpu())
+            loss = criterion(outputs, nn.functional.one_hot(lbls, num_classes=1000).float()).sum(dim=1).mean().detach().cpu()
+            val_loss.append(loss)
             val_acc.append(((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu())
             val.set_postfix_str(s='val loss {:5.02f} val acc {:5.02f}'.format(torch.stack(val_loss).mean(), 100. * torch.stack(val_acc).mean()))
     return torch.stack(val_loss).mean().item(), torch.stack(val_acc).mean().item()
@@ -103,7 +104,7 @@ model = HoMVision(1000, args.dim, args.size, args.kernel_size, args.nb_layers, a
                   args.ffw_expand, args.dropout)
 model = model.to(device)
 
-optimizer = torch.optim.Adam(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
+optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
 scaler = torch.cuda.amp.GradScaler(enabled=True)
 sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
                                             anneal_strategy='cos', pct_start=10000/args.max_iteration)
@@ -113,7 +114,7 @@ print('model and optimizer built')
 
 
 # criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-criterion = nn.BCEWithLogitsLoss(999*torch.ones(1).to(device))
+criterion = nn.BCEWithLogitsLoss(reduction='none')
 
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
@@ -144,7 +145,7 @@ for e in range(epoch):  # loop over the dataset multiple times
             with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=True):
 
                 outputs = model(imgs)
-                loss = criterion(outputs, lbls)
+                loss = criterion(outputs, lbls).sum(dim=1).mean()
                 loss = loss
 
             scaler.scale(loss).backward()
