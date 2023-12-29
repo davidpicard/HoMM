@@ -138,7 +138,8 @@ for e in range(epoch):  # loop over the dataset multiple times
 
 
             # cutmix augment augment
-            imgs, lbls = cutmix_or_mixup(imgs, lbls)
+            if torch.rand(1) > 0.8:
+                imgs, lbls = cutmix_or_mixup(imgs, lbls)
 
             optimizer.zero_grad()
 
@@ -173,7 +174,8 @@ for e in range(epoch):  # loop over the dataset multiple times
                 checkpoint = {"model": model.state_dict(),
                               "optimizer": optimizer.state_dict(),
                               "scaler": scaler.state_dict(),
-                              "global_step": torch.tensor(i)
+                              "global_step": torch.tensor(i),
+                              "train_config": vars(args)
                               }
                 torch.save(checkpoint, "{}/{}.ckpt".format(args.checkpoint_dir, model_name))
             i += 1
