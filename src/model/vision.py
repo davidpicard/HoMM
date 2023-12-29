@@ -28,6 +28,8 @@ class HoMVision(nn.Module):
         nn.init.trunc_normal_(
             self.cls, std=0.02, a=-2 * 0.02, b=2 * 0.02
         )
+        nn.init.zeros_(self.out_proj.weight)
+        nn.init.constant_(self.out_proj.bias, -6.9)
 
         # init
         self.apply(self.init_weights_)
