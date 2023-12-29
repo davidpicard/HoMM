@@ -86,7 +86,7 @@ s = args.seed
 torch.manual_seed(s)
 
 train, val = build_imagenet(args.data_dir, size=args.size)
-train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, persistent_workers=True)
+train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, persistent_workers=True, prefetch_factor=4)
 val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
 epoch = args.max_iteration // n_train + 1
