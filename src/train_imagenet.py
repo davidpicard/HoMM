@@ -73,7 +73,7 @@ parser.add_argument("--ffw_expand", type=int, default=4)
 parser.add_argument("--dropout", type=float, default=0.1)
 parser.add_argument("--wd", type=float, default=0.0)
 # training params
-parser.add_argument("--lr", type=float, default=0.0005)
+parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--val_batch_size", type=int, default=25)
 parser.add_argument("--max_iteration", type=int, default=500000)
