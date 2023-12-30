@@ -9,6 +9,16 @@ from torchvision.transforms import v2
 from torchvision.datasets import ImageNet
 from tqdm import tqdm
 
+# accelerated image loading
+try:
+    import accimage
+    from torchvision import set_image_backend
+    set_image_backend('accimage')
+    print('Accelerated image loading available')
+except ImportError:
+    print('No accelerated image loading')
+
+
 from model.vision import HoMVision
 
 
