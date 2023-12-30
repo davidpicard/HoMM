@@ -77,6 +77,7 @@ parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--val_batch_size", type=int, default=25)
 parser.add_argument("--max_iteration", type=int, default=300000)
+parser.add_argument("--warmup", type=int, default=10000)
 parser.add_argument("--num_worker", type=int, default=8)
 # log param
 parser.add_argument("--log_dir", type=str, default="./logs/")
@@ -109,7 +110,7 @@ model = model.to(device)
 optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
 scaler = torch.cuda.amp.GradScaler(enabled=True)
 sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
-                                            anneal_strategy='cos', pct_start=10000/args.max_iteration)
+                                            anneal_strategy='cos', pct_start=args.warmup/args.max_iteration)
 
 print('model and optimizer built')
 
