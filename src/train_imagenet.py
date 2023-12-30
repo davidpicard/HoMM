@@ -151,7 +151,10 @@ for e in range(epoch):  # loop over the dataset multiple times
 
 
             # cutmix augment
-            imgs, lbls = cutmix_or_mixup(imgs, lbls)
+            if torch.rand(1) < 0.1:
+                imgs, lbls = cutmix_or_mixup(imgs, lbls)
+            else:
+                lbls = nn.functional.one_hot(lbls, num_classes=1000).float()
             # randaugment
             imgs = randaug(imgs)
 
