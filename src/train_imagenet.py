@@ -89,6 +89,9 @@ parser.add_argument("--val_batch_size", type=int, default=25)
 parser.add_argument("--max_iteration", type=int, default=300000)
 parser.add_argument("--warmup", type=int, default=10000)
 parser.add_argument("--num_worker", type=int, default=8)
+# augment param
+parser.add_argument("--ra", type=bool, default=False)
+parser.add_argument("--mixup_prob", type=float, default=1.)
 # log param
 parser.add_argument("--log_dir", type=str, default="./logs/")
 parser.add_argument("--log_freq", type=int, default=5000)
@@ -151,12 +154,13 @@ for e in range(epoch):  # loop over the dataset multiple times
 
 
             # cutmix augment
-            if torch.rand(1) < 0.1:
+            if torch.rand(1) < args.mixup_prob:
                 imgs, lbls = cutmix_or_mixup(imgs, lbls)
             else:
                 lbls = nn.functional.one_hot(lbls, num_classes=1000).float()
             # randaugment
-            imgs = randaug(imgs)
+            if args.aa:
+                imgs = randaug(imgs)
 
             optimizer.zero_grad()
 
