@@ -106,8 +106,8 @@ epoch = args.max_iteration // n_train + 1
 
 mixup = v2.MixUp(num_classes=1000, alpha=0.1)
 cutmix = v2.CutMix(num_classes=1000, alpha=1.0)
-cutmix_or_mixup = v2.RandomChoice([cutmix, mixup])
-randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=0.5)
+cutmix_or_mixup =v2.RandomChoice([cutmix, mixup])
+randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=0.1)
 
 
 tr_loss = []
