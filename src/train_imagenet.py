@@ -70,7 +70,7 @@ parser.add_argument("--nb_layers", type=int, default=8)
 parser.add_argument("--order", type=int, default=4)
 parser.add_argument("--order_expand", type=int, default=8)
 parser.add_argument("--ffw_expand", type=int, default=4)
-parser.add_argument("--dropout", type=float, default=0.1)
+parser.add_argument("--dropout", type=float, default=0.)
 parser.add_argument("--wd", type=float, default=0.01)
 # training params
 parser.add_argument("--lr", type=float, default=0.001)
