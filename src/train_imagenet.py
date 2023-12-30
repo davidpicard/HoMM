@@ -159,7 +159,7 @@ for e in range(epoch):  # loop over the dataset multiple times
             else:
                 lbls = nn.functional.one_hot(lbls, num_classes=1000).float()
             # randaugment
-            if args.aa:
+            if args.ra:
                 imgs = randaug(imgs)
 
             optimizer.zero_grad()
