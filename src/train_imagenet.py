@@ -93,9 +93,11 @@ val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
 epoch = args.max_iteration // n_train + 1
 
-cutmix = v2.CutMix(num_classes=1000)
-mixup = v2.MixUp(num_classes=1000)
+mixup = v2.MixUp(num_classes=1000, alpha=0.1)
+cutmix = v2.CutMix(num_classes=1000, alpha=1.0)
 cutmix_or_mixup = v2.RandomChoice([cutmix, mixup])
+randaug = v2.RandomApply(v2.RandAugment(magnitude=6), p=0.5)
+
 
 tr_loss = []
 tr_acc = []
@@ -137,11 +139,10 @@ for e in range(epoch):  # loop over the dataset multiple times
             lbls = lbls.to(device)
 
 
-            # cutmix augment augment
-            if torch.rand(1) < 0.8:
-                imgs, lbls = cutmix_or_mixup(imgs, lbls)
-            else:
-                lbls = nn.functional.one_hot(lbls, num_classes=1000).float()
+            # cutmix augment
+            imgs, lbls = cutmix_or_mixup(imgs, lbls)
+            # randaugment
+            imgs = randaug(imgs)
 
             optimizer.zero_grad()
 
