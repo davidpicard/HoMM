@@ -93,6 +93,7 @@ parser.add_argument("--warmup", type=int, default=10000)
 parser.add_argument("--num_worker", type=int, default=8)
 # augment param
 parser.add_argument("--ra", type=bool, default=False)
+parser.add_argument("--ra_prob", type=float, default=0.1)
 parser.add_argument("--mixup_prob", type=float, default=1.)
 # log param
 parser.add_argument("--log_dir", type=str, default="./logs/")
@@ -113,7 +114,7 @@ epoch = args.max_iteration // n_train + 1
 mixup = v2.MixUp(num_classes=1000, alpha=0.1)
 cutmix = v2.CutMix(num_classes=1000, alpha=1.0)
 cutmix_or_mixup =v2.RandomChoice([cutmix, mixup])
-randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=0.1)
+randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)
 
 
 tr_loss = []
