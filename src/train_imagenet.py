@@ -96,6 +96,7 @@ parser.add_argument("--mixup_prob", type=float, default=1.)
 parser.add_argument("--log_dir", type=str, default="./logs/")
 parser.add_argument("--log_freq", type=int, default=5000)
 parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints/")
+parser.add_argument("--log_graph", type=bool, default=False)
 args = parser.parse_args()
 
 s = args.seed
@@ -141,7 +142,8 @@ val_writer =  SummaryWriter(args.log_dir+"/val/"+model_name)
 
 x = torch.randn((8, 3, args.size, args.size)).to(device)
 torchinfo.summary(model, input_data=x.to(device))
-train_writer.add_graph(model, x)
+if args.log_graph:
+    train_writer.add_graph(model, x)
 
 i = 1
 for e in range(epoch):  # loop over the dataset multiple times
