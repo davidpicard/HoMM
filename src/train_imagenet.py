@@ -1,4 +1,6 @@
 import argparse
+from pathlib import Path
+
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -136,14 +138,21 @@ criterion = nn.BCEWithLogitsLoss(reduction='none')
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
 print('training model {}'.format(model_name))
-train_writer = SummaryWriter(args.log_dir+"/train/"+model_name)
-val_writer =  SummaryWriter(args.log_dir+"/val/"+model_name)
+version = 0
+path = Path(args.log_dir+"/train/"+model_name+"_{}".format(version))
+if path.exists():
+    while(path.exists()):
+        version += 1
+        path = Path(args.log_dir + "/train/" + model_name+"_{}".format(version))
+train_writer = SummaryWriter(args.log_dir+"/train/"+model_name+"_{}".format(version))
+val_writer =  SummaryWriter(args.log_dir+"/val/"+model_name+"_{}".format(version))
 
 
 x = torch.randn((8, 3, args.size, args.size)).to(device)
 torchinfo.summary(model, input_data=x.to(device))
 if args.log_graph:
     train_writer.add_graph(model, x)
+train_writer.add_hparams(hparam_dict=vars(args), metric_dict={"version": version}, run_name="{}_{}".format(model_name, version))
 
 i = 1
 for e in range(epoch):  # loop over the dataset multiple times
