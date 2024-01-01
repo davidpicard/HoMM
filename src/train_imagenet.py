@@ -21,6 +21,7 @@ except ImportError:
 
 from model.vision import HoMVision
 from utils.data import build_imagenet
+from utils.mixup import CutMixUp
 
 
 
@@ -85,9 +86,7 @@ val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
 epoch = args.max_iteration // n_train + 1
 
-mixup = v2.MixUp(num_classes=1000, alpha=0.1)
-cutmix = v2.CutMix(num_classes=1000, alpha=1.0)
-cutmix_or_mixup =v2.RandomChoice([cutmix, mixup])
+cutmix_or_mixup = CutMixUp()
 randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)
 
 
