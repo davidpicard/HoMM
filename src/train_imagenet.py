@@ -153,7 +153,7 @@ x = torch.randn((8, 3, args.size, args.size)).to(device)
 torchinfo.summary(model, input_data=x.to(device))
 if args.log_graph:
     train_writer.add_graph(model, x)
-train_writer.add_hparams(hparam_dict=vars(args), metric_dict={"version": version}, run_name="{}_{}".format(model_name, version))
+train_writer.add_hparams(hparam_dict=vars(args), metric_dict={"version": version}, run_name="")
 
 i = 1
 for e in range(epoch):  # loop over the dataset multiple times
