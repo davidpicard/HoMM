@@ -1,11 +1,11 @@
 
 from torchvision import transforms
-from torchvision.transforms import v2
 from torchvision.datasets import ImageNet
 
+normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+
 def build_imagenet(data_dir, device="cuda", size=224):
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                     std=[0.229, 0.224, 0.225])
 
     transform_train = transforms.Compose([
         transforms.RandomResizedCrop(size, scale=(0.3, 1)),
