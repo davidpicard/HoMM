@@ -178,7 +178,6 @@ for e in range(start_epoch, epoch):  # loop over the dataset multiple times
 
                 outputs = model(imgs)
                 loss = criterion(outputs, lbls).sum(dim=1).mean()
-                loss = loss
 
             scaler.scale(loss).backward()
             # Unscales the gradients of optimizer's assigned params in-place
