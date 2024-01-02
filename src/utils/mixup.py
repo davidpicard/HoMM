@@ -13,11 +13,11 @@ class MixUp():
         x_2 = einops.rearrange(x, "(b m) c h w -> b m c h w", m=2)
         y_2 = einops.rearrange(y, "(b m) -> b m", m=2)
         b, m = y_2.shape
-        x_out = []; y_out = []
+        x_out = b*[None]; y_out = b*[None]
         for i in torch.arange(0, b):
             x_, y_ = self._mixup(x_2[i], y_2[i])
-            x_out.append(x_)
-            y_out.append(y_)
+            x_out[i] = x_
+            y_out[i] = y_
         x_out = torch.cat(x_out, dim=0)
         y_out = torch.cat(y_out, dim=0)
         return x_out, y_out
@@ -34,11 +34,11 @@ class CutMix():
         x_2 = einops.rearrange(x, "(b m) c h w -> b m c h w", m=2)
         y_2 = einops.rearrange(y, "(b m) -> b m", m=2)
         b, m = y_2.shape
-        x_out = []; y_out = []
+        x_out = b*[None]; y_out = b*[None]
         for i in torch.arange(0, b):
             x_, y_ = self._cutmix(x_2[i], y_2[i])
-            x_out.append(x_)
-            y_out.append(y_)
+            x_out[i] = x_
+            y_out[i] = y_
         x_out = torch.cat(x_out, dim=0)
         y_out = torch.cat(y_out, dim=0)
         return x_out, y_out
@@ -57,15 +57,15 @@ class CutMixUp():
         x_2 = einops.rearrange(x, "(b m) c h w -> b m c h w", m=2)
         y_2 = einops.rearrange(y, "(b m) -> b m", m=2)
         b, m = y_2.shape
-        x_out = []; y_out = []
+        x_out = b*[None]; y_out = b*[None]
         r = torch.rand((b,))
         for i in torch.arange(0, b):
             if r[i] < self.mixup_prob:
                 x_, y_ = self._mixup(x_2[i], y_2[i])
             else:
                 x_, y_ = self._cutmix(x_2[i], y_2[i])
-            x_out.append(x_)
-            y_out.append(y_)
+            x_out[i] = x_
+            y_out[i] = y_
         x_out = torch.cat(x_out, dim=0)
         y_out = torch.cat(y_out, dim=0)
         return x_out, y_out
