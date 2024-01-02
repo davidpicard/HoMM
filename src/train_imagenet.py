@@ -117,7 +117,7 @@ if args.load_checkpoint is not None:
     optimizer.load_state_dict(ckpt['optimizer'])
     scaler = torch.cuda.amp.GradScaler(enabled=True)
     scaler.load_state_dict(ckpt['scaler'])
-    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
+    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration+1,
                                                 anneal_strategy='cos', pct_start=args.warmup / args.max_iteration,
                                                 last_epoch=ckpt['global_step']-1)
     start_step = ckpt['global_step']
@@ -131,7 +131,7 @@ else:
 
     optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
     scaler = torch.cuda.amp.GradScaler(enabled=True)
-    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
+    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration+1,
                                                 anneal_strategy='cos', pct_start=args.warmup/args.max_iteration)
     start_step=1
     start_epoch=0
