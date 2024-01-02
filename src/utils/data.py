@@ -5,14 +5,17 @@ from torchvision.datasets import ImageNet
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
 
-def build_imagenet(data_dir, device="cuda", size=224):
+def build_imagenet(data_dir, device="cuda", size=224, additional_transforms=None):
 
-    transform_train = transforms.Compose([
+    tr = [
         transforms.RandomResizedCrop(size, scale=(0.3, 1)),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         normalize
-    ])
+    ]
+    if additional_transforms is not None:
+        tr.extend(additional_transforms)
+    transform_train = transforms.Compose(tr)
 
     transform_val = transforms.Compose([
         transforms.Resize(int(size/0.95)),
