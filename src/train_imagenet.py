@@ -87,10 +87,10 @@ torch.manual_seed(s)
 
 # augment
 cutmix_or_mixup = CutMixUp()
-randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)
+randaug = [v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)] if args.ra else None
 
 # build dataset
-train, val = build_imagenet(args.data_dir, size=args.size, additional_transforms=[randaug])
+train, val = build_imagenet(args.data_dir, size=args.size, additional_transforms=randaug)
 train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True)
 val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
