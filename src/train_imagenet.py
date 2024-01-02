@@ -1,5 +1,7 @@
 import argparse
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import torch
 import torch.nn as nn
@@ -73,9 +75,12 @@ parser.add_argument("--mixup_prob", type=float, default=1.)
 # log param
 parser.add_argument("--log_dir", type=str, default="./logs/")
 parser.add_argument("--log_freq", type=int, default=5000)
-parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints/")
 parser.add_argument("--log_graph", type=bool, default=False)
+# checkpoints
+parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints/")
+parser.add_argument("--load_checkpoint", type=str, default=None)
 args = parser.parse_args()
+
 
 s = args.seed
 torch.manual_seed(s)
@@ -91,30 +96,50 @@ val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 n_train = len(train_ds)
 epoch = args.max_iteration // n_train + 1
 
-
+# loss crterion
+# criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+criterion = nn.BCEWithLogitsLoss(reduction='none')
 
 tr_loss = []
 tr_acc = []
 
-model = HoMVision(1000, args.dim, args.size, args.kernel_size, args.nb_layers, args.order, args.order_expand,
-                  args.ffw_expand, args.dropout)
-model = model.to(device)
+if args.load_checkpoint is not None:
+    print('loading model from checkpoint: {}'.format(args.load_checkpoint))
+    ckpt = torch.load(args.load_checkpoint)
+    resume_args = SimpleNamespace(**ckpt['train_config'])
+    model = HoMVision(1000, resume_args.dim, resume_args.size, resume_args.kernel_size, resume_args.nb_layers, resume_args.order, resume_args.order_expand,
+                      resume_args.ffw_expand, resume_args.dropout)
+    model.load_state_dict(ckpt['model'])
+    model = model.to(device)
+    model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(resume_args.size, resume_args.kernel_size, resume_args.dim,
+                                                       resume_args.nb_layers, resume_args.order, resume_args.order_expand, resume_args.ffw_expand)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
+    optimizer.load_state_dict(ckpt['optimizer'])
+    scaler = torch.cuda.amp.GradScaler(enabled=True)
+    scaler.load_state_dict(ckpt['scaler'])
+    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
+                                                anneal_strategy='cos', pct_start=args.warmup / args.max_iteration,
+                                                last_epoch=ckpt['global_step']-1)
+    start_step = ckpt['global_step']
+    start_epoch = start_step//n_train
+else:
+    model = HoMVision(1000, args.dim, args.size, args.kernel_size, args.nb_layers, args.order, args.order_expand,
+                      args.ffw_expand, args.dropout)
+    model = model.to(device)
+    model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
+                                                   args.nb_layers, args.order, args.order_expand, args.ffw_expand)
 
-optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
-scaler = torch.cuda.amp.GradScaler(enabled=True)
-sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
-                                            anneal_strategy='cos', pct_start=args.warmup/args.max_iteration)
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr, weight_decay=args.wd)
+    scaler = torch.cuda.amp.GradScaler(enabled=True)
+    sched = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=args.lr, total_steps=args.max_iteration,
+                                                anneal_strategy='cos', pct_start=args.warmup/args.max_iteration)
+    start_step=1
+    start_epoch=0
 
 print('model and optimizer built')
-
-
-
-# criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
-criterion = nn.BCEWithLogitsLoss(reduction='none')
-
-model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
-                                                   args.nb_layers, args.order, args.order_expand, args.ffw_expand)
 print('training model {}'.format(model_name))
+
+# loging
 version = 0
 path = Path(args.log_dir+"/train/"+model_name+"_{}".format(version))
 if path.exists():
@@ -124,22 +149,22 @@ if path.exists():
 train_writer = SummaryWriter(args.log_dir+"/train/"+model_name+"_{}".format(version))
 val_writer =  SummaryWriter(args.log_dir+"/val/"+model_name+"_{}".format(version))
 
-
 x = torch.randn((8, 3, args.size, args.size)).to(device)
 torchinfo.summary(model, input_data=x.to(device))
 if args.log_graph:
     train_writer.add_graph(model, x)
 train_writer.add_hparams(hparam_dict=vars(args), metric_dict={"version": version}, run_name="")
 
-i = 1
-for e in range(epoch):  # loop over the dataset multiple times
+
+# big loop
+i = start_step
+for e in range(start_epoch, epoch):  # loop over the dataset multiple times
     with tqdm(train_ds, desc='Epoch={}'.format(e)) as tepoch:
         for imgs, lbls in tepoch:
 
             # to gpu
             imgs = imgs.to(device)
             lbls = lbls.to(device)
-
 
             # cutmix augment
             if torch.rand(1) < args.mixup_prob:
@@ -180,10 +205,22 @@ for e in range(epoch):  # loop over the dataset multiple times
                 checkpoint = {"model": model.state_dict(),
                               "optimizer": optimizer.state_dict(),
                               "scaler": scaler.state_dict(),
-                              "global_step": torch.tensor(i),
+                              "global_step": i,
                               "train_config": vars(args)
                               }
-                torch.save(checkpoint, "{}/{}.ckpt".format(args.checkpoint_dir, model_name))
+                torch.save(checkpoint, "{}/{}_{}.ckpt".format(args.checkpoint_dir, model_name, version))
+
+            if i >= args.max_iteration:
+                print('training finished, saving last model')
+                checkpoint = {"model": model.state_dict(),
+                              "optimizer": optimizer.state_dict(),
+                              "scaler": scaler.state_dict(),
+                              "global_step": i,
+                              "train_config": vars(args)
+                              }
+                torch.save(checkpoint, "{}/{}_{}.ckpt".format(args.checkpoint_dir, model_name, version))
+                sys.exit(0)
+
             i += 1
 
 
