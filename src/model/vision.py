@@ -48,7 +48,11 @@ class HoMVision(nn.Module):
 
         b, n, c = x.shape
         ones = torch.ones(b, 1, 1).to(x.device)
-        x = x + self.position * ones
+        if n == self.position.shape[1]:
+            position = self.position
+        else:
+            position = nn.functional.interpolate(self.position.unsqueeze(0), size=(n,c), mode='bicubic').squeeze(0)
+        x = x + position * ones
         cls = self.cls * ones
 
         x = torch.cat([cls, x], dim=1)
