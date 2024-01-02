@@ -1,0 +1,48 @@
+import argparse
+import torch
+from types import SimpleNamespace
+from model.vision import HoMVision
+from utils.data import build_imagenet
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+
+device = "cuda"
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--data_dir", help="path to imagenet", required=True)
+parser.add_argument("--checkpoint", help="path to checkpoint", required=True)
+parser.add_argument("--size", help="image size", type=int, default=224)
+parser.add_argument("--batch_size", type=int, default=128)
+parser.add_argument("--val_batch_size", type=int, default=25)
+parser.add_argument("--num_worker", type=int, default=8)
+args = parser.parse_args()
+
+
+# build dataset
+train, val = build_imagenet(args.data_dir, size=args.size)
+train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True)
+val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
+n_train = len(train_ds)
+
+# model
+print('loading model from checkpoint: {}'.format(args.checkpoint))
+ckpt = torch.load(args.checkpoint)
+resume_args = SimpleNamespace(**ckpt['train_config'])
+model = HoMVision(1000, resume_args.dim, resume_args.size, resume_args.kernel_size, resume_args.nb_layers,
+                  resume_args.order, resume_args.order_expand,
+                  resume_args.ffw_expand, resume_args.dropout)
+model.load_state_dict(ckpt['model'])
+model = model.to(device)
+
+val_acc=[]
+with tqdm(val_ds) as val:
+    for imgs, lbls in val:
+        imgs = imgs.to(device)
+        lbls = lbls.to(device)
+        outputs = model(imgs)
+        val_acc.append(((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu())
+        val.set_postfix_str(s='val acc {:5.02f}'.format(100. * torch.stack(val_acc).mean()))
+print('final accuracy: {}'.format(100.*torch.stack(val_acc).mean().item()))
+
