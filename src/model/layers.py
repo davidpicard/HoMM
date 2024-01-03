@@ -19,7 +19,7 @@ class HoMLayer(nn.Module):
                                  nn.GELU(),
                                  nn.Linear(ffw_expand*dim, dim))
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         b, n, d = x.shape
 
         # high order
@@ -27,8 +27,15 @@ class HoMLayer(nn.Module):
         h = list(h.chunk(self.order, dim=-1))
         for i in range(1, self.order):
             h[i] = h[i] * h[i-1]
+        h = torch.cat(h, dim=-1)
         # averaging
-        h = torch.cat(h, dim=-1).mean(dim=1, keepdims=True)
+        if mask is None:
+            h = h.mean(dim=1, keepdims=True)
+        else:
+            if mask.dim()==2:
+                h = (h * mask.unsqueeze(-1)).mean(dim=1, keepdims=True)
+            else:
+                raise Exception('unsupported dim for mask (should be 2 or None)')
 
         # selection
         s = F.sigmoid(self.se_proj(x))
