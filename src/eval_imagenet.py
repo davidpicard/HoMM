@@ -22,9 +22,9 @@ args = parser.parse_args()
 
 # build dataset
 train, val = build_imagenet(args.data_dir, size=args.size)
-train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True)
+# train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True)
 val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
-n_train = len(train_ds)
+# n_train = len(train_ds)
 
 # model
 print('loading model from checkpoint: {}'.format(args.checkpoint))
