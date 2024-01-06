@@ -191,8 +191,9 @@ for e in range(start_epoch, epoch):  # loop over the dataset multiple times
             running_loss = loss.detach().cpu()
             running_acc = ((outputs.argmax(dim=1) == lbls.argmax(dim=1)).sum() / lbls.shape[0]).detach().cpu()
 
-            train_writer.add_scalar("loss", running_loss, global_step=i)
-            train_writer.add_scalar("acc", running_acc, global_step=i)
+            if i % 10 == 0:
+                train_writer.add_scalar("loss", running_loss, global_step=i)
+                train_writer.add_scalar("acc", running_acc, global_step=i)
             tepoch.set_postfix_str(s='loss: {:5.02f} acc: {:5.02f}'.format(running_loss, 100 * running_acc))
 
             if i % args.log_freq == 0:
