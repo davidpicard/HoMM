@@ -17,8 +17,14 @@ parser.add_argument("--size", help="image size", type=int, default=224)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--val_batch_size", type=int, default=25)
 parser.add_argument("--num_worker", type=int, default=4)
+parser.add_argument("--precision", type=str, default="float")
 args = parser.parse_args()
 
+precision_type = torch.float
+if args.precision == "bf16":
+    precision_type = torch.bfloat16
+elif precision_type == "fp16":
+    precision_type = torch.float16
 
 # build dataset
 train, val = build_imagenet(args.data_dir, size=args.size)
@@ -41,7 +47,8 @@ with tqdm(val_ds) as val:
     for imgs, lbls in val:
         imgs = imgs.to(device)
         lbls = lbls.to(device)
-        outputs = model(imgs)
+        with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
+            outputs = model(imgs)
         val_acc.append(((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu())
         val.set_postfix_str(s='val acc {:5.02f}'.format(100. * torch.stack(val_acc).mean()))
 print('final accuracy: {}'.format(100.*torch.stack(val_acc).mean().item()))
