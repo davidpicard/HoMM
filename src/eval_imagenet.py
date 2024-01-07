@@ -16,7 +16,7 @@ parser.add_argument("--checkpoint", help="path to checkpoint", required=True)
 parser.add_argument("--size", help="image size", type=int, default=224)
 parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--val_batch_size", type=int, default=25)
-parser.add_argument("--num_worker", type=int, default=8)
+parser.add_argument("--num_worker", type=int, default=4)
 args = parser.parse_args()
 
 
