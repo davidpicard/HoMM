@@ -54,8 +54,8 @@ class CutMixUp():
 
     @torch.no_grad()
     def __call__(self, x, y):
-        x_2 = einops.rearrange(x, "(b m) c h w -> b m c h w", m=2)
-        y_2 = einops.rearrange(y, "(b m) -> b m", m=2)
+        x_2 = einops.rearrange(x, "(b m) c h w -> b m c h w", m=8)
+        y_2 = einops.rearrange(y, "(b m) -> b m", m=8)
         b, m = y_2.shape
         x_out = b*[None]; y_out = b*[None]
         r = torch.rand((b,))
