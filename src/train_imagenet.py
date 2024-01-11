@@ -80,6 +80,7 @@ parser.add_argument("--log_graph", type=bool, default=False)
 # checkpoints
 parser.add_argument("--checkpoint_dir", type=str, default="./checkpoints/")
 parser.add_argument("--load_checkpoint", type=str, default=None)
+parser.add_argument("--load_weights", type=str, default=None)
 args = parser.parse_args()
 
 
@@ -142,6 +143,13 @@ else:
                                                 anneal_strategy='cos', pct_start=args.warmup/args.max_iteration)
     start_step=1
     start_epoch=0
+
+if args.load_weights is not None:
+    print('loading weights from chekpoint: {}'.format(args.load_weights))
+    ckpt = torch.load(args.load_weights)
+    model.load_state_dict(ckpt['model'])
+    model = model.to(device)
+
 
 print('model and optimizer built')
 print('training model {}'.format(model_name))
