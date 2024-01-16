@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 import torchinfo
 from torchvision.transforms import v2
+from lsuv import lsuv_with_dataloader
 from tqdm import tqdm
 
 # accelerated image loading
@@ -134,6 +135,10 @@ else:
     model = HoMVision(1000, args.dim, args.size, args.kernel_size, args.nb_layers, args.order, args.order_expand,
                       args.ffw_expand, args.dropout)
     model = model.to(device)
+    model = lsuv_with_dataloader(model, train_ds, device=torch.device(device), verbose=False)
+    nn.init.zeros_(model.out_proj.weight)
+    nn.init.constant_(model.out_proj.bias, -6.9)
+
     model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
 
