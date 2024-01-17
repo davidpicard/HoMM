@@ -34,7 +34,9 @@ class HoMLayer(nn.Module):
             h = h.mean(dim=1, keepdims=True)
         else:
             if mask.dim()==2:
-                h = (h * mask.unsqueeze(-1)).mean(dim=1, keepdims=True)
+                h = (h * mask.unsqueeze(-1)).sum(dim=1, keepdims=True)/mask.unsqueeze(-1).sum(dim=1, keepdims=True)
+            elif mask.dim() ==3:
+                h = torch.einsum(h, mask, 'bnd, bmn -> bmd') # b batch, n context tokens, m query tokens, d dim
             else:
                 raise Exception('unsupported dim for mask (should be 2 or None)')
 
