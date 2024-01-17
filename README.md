@@ -12,10 +12,10 @@ The HoMM scheme is as follows: Having a query token $x_q$ and a set of context t
 On imagenet, with the following parameters:
 - image size: 160
 - patch size: 16
-- # of layers: 8
+- \# of layers: 8
 - batch size: 512
 - weight decay: 0.01
-- # of training steps: 150k
+- \# of training steps: 150k
 - optimizer: AdamW
 - rand-augment + cutmix/mixup
 
