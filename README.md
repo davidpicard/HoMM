@@ -28,12 +28,13 @@ On imagenet, with the following parameters:
 | 256 | 4 | 4  | 46.1 | 2.9G  | 29M      |
 
 
+Clearly, having the second order makes a big difference. Having the fourth order not so much. It's better to have a higher dimension and lower expansion than the contrary.
 
-Currently testing on
+### Currently testing on
 - Vision: ImageNet classification
 - Vision: Masked Auto Encoder pretraining
 
-TODO:
+### TODO:
 - Vision: diffusion model
 - NLP: sentence embedding
 - NLP: next token prediction
