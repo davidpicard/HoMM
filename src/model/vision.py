@@ -70,7 +70,7 @@ class HoMVision(nn.Module):
             mask = torch.cat([torch.ones(b, 1).to(mask.device), mask], dim=1)
 
         for i in range(self.nb_layers):
-            x = self.layers[i](x, mask)
+            x = self.layers[i](x, mask=mask)
 
         if self.pooling == 'cls':
             x = self.out_proj(x[:, 0, :])

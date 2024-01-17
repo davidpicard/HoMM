@@ -19,11 +19,12 @@ class HoMLayer(nn.Module):
                                  nn.GELU(),
                                  nn.Linear(ffw_expand*dim, dim))
 
-    def forward(self, x, mask=None):
-        b, n, d = x.shape
+    def forward(self, xq, xc=None, mask=None):
+        if xc is None:
+            xc = xq # self attention
 
         # high order
-        h = F.tanh(self.ho_proj(self.ho_drop(x)))
+        h = F.tanh(self.ho_proj(self.ho_drop(xc)))
         h = list(h.chunk(self.order, dim=-1))
         for i in range(1, self.order):
             h[i] = h[i] * h[i-1]
@@ -38,11 +39,11 @@ class HoMLayer(nn.Module):
                 raise Exception('unsupported dim for mask (should be 2 or None)')
 
         # selection
-        s = F.sigmoid(self.se_proj(x))
+        s = F.sigmoid(self.se_proj(xq))
         sh = s * h
 
         # aggregation
-        x = x + self.ag_proj(sh)
+        x = xq + self.ag_proj(sh)
 
         # ffw
         x = x + self.ffw(x)
