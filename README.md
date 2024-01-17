@@ -1,4 +1,4 @@
-# High order Moments Models
+# High order Moment Models
 
 We propose an alternative to classical attention that scales linearly with the number of tokens and is based on high order moments.
 
