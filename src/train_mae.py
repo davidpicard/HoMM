@@ -69,6 +69,7 @@ parser.add_argument("--val_batch_size", type=int, default=25)
 parser.add_argument("--max_iteration", type=int, default=300000)
 parser.add_argument("--warmup", type=int, default=10000)
 parser.add_argument("--num_worker", type=int, default=8)
+parser.add_argument("--precision", type=str, default="bf16")
 # augment param
 parser.add_argument("--ra", type=bool, default=False)
 parser.add_argument("--ra_prob", type=float, default=0.1)
@@ -86,6 +87,11 @@ args = parser.parse_args()
 
 s = args.seed
 torch.manual_seed(s)
+precision_type = torch.float
+if args.precision == "bf16":
+    precision_type = torch.bfloat16
+elif precision_type == "fp16":
+    precision_type = torch.float16
 
 # augment
 cutmix_or_mixup = CutMixUp()
@@ -186,7 +192,7 @@ for e in range(start_epoch, epoch):  # loop over the dataset multiple times
 
             optimizer.zero_grad()
 
-            with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=True):
+            with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
 
                 imgs_enc = encoder(masked_imgs, mask) # attend only unmask tokens using mask
                 outputs = decoder(imgs_enc * mask.unsqueeze(-1)) # attend all tokens but don't backprop masked ones to the encoder
