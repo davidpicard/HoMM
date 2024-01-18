@@ -147,7 +147,7 @@ else:
             break
         batch = batch[0]
         encoder = lsuv_with_singlebatch(encoder, batch, device=torch.device(device), verbose=False)
-        decoder = lsuv_with_singlebatch(decoder, encoder(batch), device=torch.device(device), verbose=False)
+        decoder = lsuv_with_singlebatch(decoder, encoder(batch.to(device)), device=torch.device(device), verbose=False)
     model_name = "mae_i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
 
