@@ -62,6 +62,7 @@ parser.add_argument("--order_expand", type=int, default=8)
 parser.add_argument("--ffw_expand", type=int, default=4)
 parser.add_argument("--dropout", type=float, default=0.)
 parser.add_argument("--wd", type=float, default=0.01)
+parser.add_argument("--lsuv_init", type=bool, default=False)
 # training params
 parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--batch_size", type=int, default=128)
@@ -140,6 +141,13 @@ else:
     decoder = HoMVision(3*args.kernel_size**2, args.dim, args.size, args.kernel_size, args.nb_layers, args.order, args.order_expand,
                       args.ffw_expand, args.dropout, pooling=None, in_conv=False)
     decoder = decoder.to(device)
+    if args.lsuv_init:
+        from lsuv import lsuv_with_singlebatch
+        for batch in train_ds:
+            break
+        batch = batch[0]
+        encoder = lsuv_with_singlebatch(encoder, batch, device=torch.device(device), verbose=False)
+        decoder = lsuv_with_singlebatch(decoder, encoder(batch), device=torch.device(device), verbose=False)
     model_name = "mae_i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
 
