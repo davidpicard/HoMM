@@ -23,7 +23,7 @@ except ImportError:
 
 
 from model.vision import HoMVision
-from utils.data import build_imagenet, denormalize, build_imagefolder
+from utils.data import build_webdataset, denormalize
 from utils.mixup import CutMixUp
 
 
@@ -98,10 +98,9 @@ cutmix_or_mixup = CutMixUp()
 randaug = [v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)] if args.ra else None
 
 # build dataset
-train = build_imagefolder(args.data_dir, size=args.size, additional_transforms=randaug)
-train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, shuffle=True, prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True)
-n_train = len(train_ds)
-epoch = args.max_iteration // n_train + 1
+train = build_webdataset(args.data_dir, size=args.size, additional_transforms=randaug)
+train_ds = DataLoader(train, batch_size=args.batch_size, num_workers=args.num_worker, prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True)
+epoch = args.max_iteration
 
 # loss crterion
 # criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
@@ -132,7 +131,7 @@ if args.load_checkpoint is not None:
                                                 anneal_strategy='cos', pct_start=args.warmup / args.max_iteration,
                                                 last_epoch=ckpt['global_step']-1)
     start_step = ckpt['global_step']
-    start_epoch = start_step//n_train
+    start_epoch = 0
 else:
     encoder = HoMVision(args.dim, args.dim, args.size, args.kernel_size, args.nb_layers, args.order, args.order_expand,
                       args.ffw_expand, args.dropout, pooling=None)
@@ -214,7 +213,7 @@ for e in range(start_epoch, epoch):  # loop over the dataset multiple times
             running_loss = loss.detach().cpu()
 
             train_writer.add_scalar("loss", running_loss, global_step=i)
-            tepoch.set_postfix_str(s='loss: {:5.02f}'.format(running_loss))
+            tepoch.set_postfix_str(s='step: {} loss: {:5.02f}'.format(i, running_loss))
 
             if i % args.log_freq == 0:
                 train_writer.add_images('origin', denormalize(imgs[0:16]), global_step=i)

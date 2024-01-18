@@ -42,3 +42,26 @@ def build_imagefolder(data_dir, size=224, additional_transforms=None):
     transform_train = transforms.Compose(tr)
 
     return ImageFolder(data_dir, transform_train)
+
+def build_webdataset(data_dir, size=224, additional_transforms=None):
+    import webdataset as wds
+
+    tr = [
+        transforms.RandomResizedCrop(size),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize
+    ]
+    if additional_transforms is not None:
+        tr.extend(additional_transforms)
+    transform_train = transforms.Compose(tr)
+
+    dataset = (
+        wds.WebDataset(data_dir, shardshuffle=True)
+        .shuffle(2000)
+        .decode("pil")
+        .to_tuple("jpg", "json")
+        .map_tuple(transform_train, lambda json: int(json["label"]))
+    )
+
+    return dataset
