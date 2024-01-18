@@ -9,7 +9,6 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard.writer import SummaryWriter
 import torchinfo
 from torchvision.transforms import v2
-from lsuv import lsuv_with_dataloader
 from tqdm import tqdm
 
 # accelerated image loading
@@ -62,6 +61,7 @@ parser.add_argument("--order_expand", type=int, default=8)
 parser.add_argument("--ffw_expand", type=int, default=4)
 parser.add_argument("--dropout", type=float, default=0.)
 parser.add_argument("--wd", type=float, default=0.01)
+parser.add_argument("--lsuv_init", type=bool, default=False)
 # training params
 parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--batch_size", type=int, default=128)
@@ -135,9 +135,11 @@ else:
     model = HoMVision(1000, args.dim, args.size, args.kernel_size, args.nb_layers, args.order, args.order_expand,
                       args.ffw_expand, args.dropout)
     model = model.to(device)
-    model = lsuv_with_dataloader(model, train_ds, device=torch.device(device), verbose=False)
-    nn.init.zeros_(model.out_proj.weight)
-    nn.init.constant_(model.out_proj.bias, -6.9)
+    if args.lsuv_init:
+        from lsuv import lsuv_with_dataloader
+        model = lsuv_with_dataloader(model, train_ds, device=torch.device(device), verbose=False)
+        nn.init.zeros_(model.out_proj.weight)
+        nn.init.constant_(model.out_proj.bias, -6.9)
 
     model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(args.size, args.kernel_size, args.dim,
                                                    args.nb_layers, args.order, args.order_expand, args.ffw_expand)
