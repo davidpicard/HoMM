@@ -121,22 +121,6 @@ class PatchHoMModel(nn.Module):
             self.patch_num, d_model
         )
 
-        # layer_norm_eps: float = 1e-5
-        # encoder_layer = nn.TransformerEncoderLayer(
-        #     d_model=d_model,
-        #     nhead=nhead,
-        #     dim_feedforward=dim_feedforward,
-        #     dropout=dropout,
-        #     activation=activation,
-        #     layer_norm_eps=layer_norm_eps,
-        #     batch_first=True,
-        #     norm_first=norm_first,
-        # )
-        # encoder_norm = nn.LayerNorm(d_model, eps=layer_norm_eps)
-        # self.encoder = nn.TransformerEncoder(
-        #     encoder_layer, num_encoder_layers, encoder_norm
-        # )
-
         self.encoder = nn.ModuleList(
             [
                 HoMLayer(d_model, order, order_expand, ffw_expand, dropout=dropout)
