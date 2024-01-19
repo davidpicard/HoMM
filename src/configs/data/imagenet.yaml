@@ -1,5 +1,5 @@
 defaults:
-  - additional_train_transforms: randaugment
+  - additional_train_transforms: null
   - _self_
 
 full_batch_size: 128
