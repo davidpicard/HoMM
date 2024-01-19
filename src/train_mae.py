@@ -26,14 +26,12 @@ except ImportError:
 
 
 from model.vision import HoMVision
-from utils.data import build_imagenet, denormalize, build_imagefolder
+from utils.data import build_dataset, denormalize
 from utils.mixup import CutMixUp
 
 
 #############
-def main():
-    # args
-    args = parse_args()
+def main(args):
 
     # set Precision
     args.precision_type = torch.float
@@ -61,14 +59,13 @@ def main():
     randaug = [v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)] if args.ra else None
 
     # build dataset
-    train = build_imagefolder(args.data_dir, size=args.size, additional_transforms=randaug)
-    train_ds = DataLoader(train, batch_size=args.batch_size//dist.get_world_size(),
-                          num_workers=args.num_worker//dist.get_world_size(), shuffle=True,
-                          prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True)
+    train = build_dataset(args, size=args.size, additional_transforms=randaug)
+    train_ds = DataLoader(
+        train, batch_size=args.batch_size//dist.get_world_size(), num_workers=args.num_worker//dist.get_world_size(),
+        prefetch_factor=4, pin_memory=True, persistent_workers=True, drop_last=True
+    )
+    epoch = args.max_iteration
 
-    #epochs
-    n_train = len(train_ds)
-    epoch = args.max_iteration // n_train + 1
 
     # loss criterion
     criterion = nn.MSELoss(reduction='none')
@@ -116,7 +113,7 @@ def main():
                                                 anneal_strategy='cos', pct_start=args.warmup / args.max_iteration,
                                                 last_epoch=ckpt['global_step'] - 1 if args.load_checkpoint else -1)
     start_step = ckpt['global_step'] if args.load_checkpoint else 1
-    start_epoch = start_step // n_train if args.load_checkpoint else 0
+    start_epoch = 0
 
     logger.info('model and optimizer built')
     logger.info('training model {}'.format(model_name))
@@ -154,12 +151,11 @@ def main():
                 b, c, h, w = imgs.shape
 
                 mask = torch.bernoulli(torch.empty((b, n_tokens)).uniform_(0, 1), p=args.mask_prob).cuda()
-
                 masked_imgs = einops.rearrange(imgs, 'b c (m h) (n w) -> b (m n) (h w c)', c=3,
                                                m=args.size // args.kernel_size, w=args.kernel_size)
                 masked_imgs = masked_imgs * mask.unsqueeze(-1)
                 masked_imgs = einops.rearrange(masked_imgs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
-                                               m=args.size // args.kernel_size, w=args.kernel_size)
+                               m=args.size // args.kernel_size, w=args.kernel_size)
 
                 optimizer.zero_grad()
 
@@ -183,6 +179,7 @@ def main():
 
                 # print statistics
                 running_loss = loss.detach().cpu()
+                train_writer.add_scalar("loss", running_loss, global_step=i)
                 tepoch.set_postfix_str(s='step: {} loss: {:5.02f}'.format(i, running_loss))
 
                 if dist.get_rank() == 0:
@@ -217,3 +214,6 @@ def main():
                       "train_config": vars(args)
                       }
         torch.save(checkpoint, "{}/{}_{}.ckpt".format(args.checkpoint_dir, model_name, args.version))
+
+if __name__ == '__main__':
+    main(parse_args())
