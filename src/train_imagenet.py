@@ -96,7 +96,12 @@ elif precision_type == "fp16":
 
 # augment
 cutmix_or_mixup = CutMixUp()
-randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)
+_randaug = v2.RandomApply([v2.RandAugment(magnitude=6)], p=args.ra_prob)
+def randaug(imgs):
+    b, c, h, w = imgs.shape
+    for i in range(b):
+        imgs[i] = _randaug(imgs[i])
+    return imgs
 
 # build dataset
 train, val = build_imagenet(args.data_dir, size=args.size, additional_transforms=None)
