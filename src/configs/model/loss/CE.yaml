@@ -1,0 +1,2 @@
+_target_: model.losses.CE.CrossEntropyLossModule
+sum_label_dim: True

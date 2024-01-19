@@ -1,0 +1,42 @@
+defaults:
+  - model: homm
+  - computer: 1-gpu
+  - data: imagenet
+  - logger: wandb
+  - _self_
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_steps: 300000
+  deterministic: True
+  devices: ${computer.devices}
+  accelerator: ${computer.accelerator}
+  strategy: ${computer.strategy}
+  log_every_n_steps: 1
+  num_nodes: ${computer.num_nodes}
+  precision: ${computer.precision}
+  gradient_clip_val: 1.0
+  
+checkpoints:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: ${checkpoint_dir}/${experiment_name}
+  save_last: True
+  monitor: val/loss
+  mode: min
+
+progress_bar:
+  _target_: pytorch_lightning.callbacks.TQDMProgressBar
+  refresh_rate: ${computer.progress_bar_refresh_rate}
+
+seed: 3407
+data_dir: ${root_dir}/datasets
+root_dir:  ${hydra:runtime.cwd}
+checkpoint_dir: ${root_dir}/checkpoints
+experiment_name_suffix: base
+experiment_name: ${data.name}_${model.name}_${experiment_name_suffix}
+
+hydra:
+  run:
+    dir: outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}/${experiment_name}
+  job:
+    chdir: true

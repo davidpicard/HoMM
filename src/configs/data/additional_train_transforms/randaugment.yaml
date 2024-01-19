@@ -1,0 +1,11 @@
+instance:
+  - _target_: torchvision.transforms.v2.RandomApply
+    transforms:
+      - _target_: torchvision.transforms.v2.RandAugment
+        magnitude: ${data.additional_train_transforms.randaugment_magnitude}
+    p: ${data.additional_train_transforms.randaugment_p}
+
+
+
+randaugment_magnitude: 6
+randaugment_p: 0.1

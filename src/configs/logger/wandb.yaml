@@ -1,0 +1,6 @@
+_target_: pytorch_lightning.loggers.WandbLogger
+save_dir: ${root_dir}/wandb
+name: ${experiment_name}
+project: Homm
+log_model: False
+offline: False
