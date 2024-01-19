@@ -17,7 +17,7 @@ trainer:
   precision: ${computer.precision}
   gradient_clip_val: 1.0
   val_check_interval: 1000
-  check_val_every_n_epoch: None
+  check_val_every_n_epoch: null
   
 checkpoints:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint

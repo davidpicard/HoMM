@@ -13,6 +13,7 @@ class ImageDataModule(L.LightningDataModule):
         self,
         dataset_builder,
         full_batch_size,
+        full_val_batch_size,
         num_workers,
         num_nodes=1,
         num_devices=1,
@@ -20,6 +21,7 @@ class ImageDataModule(L.LightningDataModule):
         super().__init__()
         self.batch_size = full_batch_size // (num_nodes * num_devices)
         print(f"Each GPU will receive {self.batch_size} images")
+        self.val_batch_size = full_val_batch_size // (num_nodes * num_devices)
         self.num_workers = num_workers
         self._dataset_builder = dataset_builder
 
@@ -45,7 +47,7 @@ class ImageDataModule(L.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(
             self.val_dataset,
-            batch_size=self.batch_size,
+            batch_size=self.val_batch_size,
             shuffle=False,
             num_workers=self.num_workers,
         )
