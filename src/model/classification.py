@@ -43,19 +43,20 @@ class ClassificationModule(L.LightningModule):
                 on_step=True,
                 on_epoch=True,
             )
-        self.train_metrics.update(pred, label)
+        # self.train_metrics.update(pred, label)
         return loss
 
     def on_train_epoch_end(self):
-        metrics = self.train_metrics.compute()
-        for metric_name, metric_value in metrics.items():
-            self.log(
-                f"train/{metric_name}",
-                metric_value,
-                sync_dist=True,
-                on_step=False,
-                on_epoch=True,
-            )
+        pass
+        # metrics = self.train_metrics.compute()
+        # for metric_name, metric_value in metrics.items():
+        #     self.log(
+        #         f"train/{metric_name}",
+        #         metric_value,
+        #         sync_dist=True,
+        #         on_step=False,
+        #         on_epoch=True,
+        #     )
 
     def validation_step(self, batch, batch_idx):
         img, label = batch
