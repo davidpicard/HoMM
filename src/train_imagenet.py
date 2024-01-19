@@ -23,7 +23,7 @@ except ImportError:
     print("No accelerated image loading")
 
 
-from model.vision import HoMVision
+from model.network.vision import HoMVision
 from utils.data import build_imagenet
 from utils.mixup import CutMixUp
 
@@ -116,7 +116,7 @@ randaug = (
 
 # build dataset
 train, val = build_imagenet(
-    args.data_dir, size=args.size, additional_transforms=randaug
+    args.data_dir, size=args.size, num_classes=1000, additional_transforms=randaug
 )
 train_ds = DataLoader(
     train,
