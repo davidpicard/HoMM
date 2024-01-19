@@ -3,7 +3,7 @@ import argparse
 
 def _add_data_params(parser):
     parser.add_argument("--data_dir", help="path to dataset", required=True)
-    parser.add_argument("--data_type", default='webdataset', choices=['webdataset', 'imagefolder'])
+    parser.add_argument("--dataset_type", default='webdataset', choices=['webdataset', 'imagefolder'])
 
 def _add_model_params(parser):
     parser.add_argument("--dim", type=int, default=128)
