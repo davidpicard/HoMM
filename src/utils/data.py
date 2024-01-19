@@ -68,5 +68,5 @@ def build_webdataset(data_dir, size=224, additional_transforms=None):
 def build_dataset(args, size, additional_transforms=None):
     if args.dataset_type=='webdataset':
         return build_webdataset(args.data_dir, size, additional_transforms)
-    elif args.dataset_type=='image_folder':
+    elif args.dataset_type=='imagefolder':
         return build_imagefolder(args.data_dir, size, additional_transforms)
