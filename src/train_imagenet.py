@@ -39,7 +39,7 @@ def eval(model, val_ds, criterion):
             outputs = model(imgs)
             loss = (
                 criterion(
-                    outputs, nn.functional.one_hot(lbls, num_classes=1000).float()
+                    outputs, lbls
                 )
                 .sum(dim=1)
                 .mean()
@@ -48,7 +48,7 @@ def eval(model, val_ds, criterion):
             )
             val_loss.append(loss)
             val_acc.append(
-                ((outputs.argmax(dim=1) == lbls).sum() / lbls.shape[0]).detach().cpu()
+                ((outputs.argmax(dim=1) == lbls.argmax()).sum() / lbls.shape[0]).detach().cpu()
             )
             val.set_postfix_str(
                 s="val loss {:5.02f} val acc {:5.02f}".format(
