@@ -1,0 +1,7 @@
+devices: 4
+progress_bar_refresh_rate: 2
+num_workers: 8
+accelerator: gpu
+precision: bf16-mixed
+strategy: ddp
+num_nodes: 1

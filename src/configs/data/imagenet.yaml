@@ -1,0 +1,24 @@
+defaults:
+  - additional_train_transforms: randaugment
+  - _self_
+
+full_batch_size: 128
+size: 256
+num_classes: 1000
+name: Imagenet-1K
+
+dataset_builder:
+  _partial_: true
+  _target_: utils.data.build_imagenet
+  data_dir: ${data_dir}/imagenet
+  num_classes: ${data.num_classes}
+  size: ${data.size}
+  additional_transforms: ${data.additional_train_transforms.instance}
+
+datamodule:
+  _target_: utils.datamodule.ImageDataModule
+  dataset_builder: ${data.dataset_builder}
+  full_batch_size: ${data.full_batch_size}
+  num_workers: ${computer.num_workers}
+  num_nodes: ${computer.num_nodes}
+  num_devices: ${computer.devices}
