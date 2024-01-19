@@ -1,0 +1,4 @@
+_target_: utils.mixup.MixUp
+apply_transform_prob: 1.0
+alpha: 0.1
+num_classes: 1000
