@@ -37,7 +37,7 @@ class ImageDataModule(L.LightningDataModule):
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
-            prefetch_factor=4,
+            prefetch_factor=1,
             pin_memory=True,
             persistent_workers=True,
             drop_last=True,
