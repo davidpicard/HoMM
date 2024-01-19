@@ -18,6 +18,7 @@ Easy targets if you want to contribute
 ### Currently testing on
 - Vision: ImageNet classification (best 224x224 score so far: 53% top-1 for a 26M params model comparable to ViT-S32 // 20230117)
 - Vision: Masked Auto Encoder pretraining
+- Probabilistic Time Series Forecasting: Running comparisons against AutoML Forecasting [evaluations](https://arxiv.org/pdf/2308.05566.pdf)
 
 ### TODO:
 - Vision: diffusion model
