@@ -1,7 +1,14 @@
-from torchmetrics import Metric
+from torchmetrics.classification import MulticlassAccuracy
 import torch
 
+class ClassificationAccuracy(MulticlassAccuracy):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    def update(self, preds, targets):
+        targets = targets.argmax(dim=1)
+        super().update(preds, targets)
 
+'''
 class ClassificationMetrics(Metric):
     def __init__(self, num_classes):
         super().__init__()
@@ -36,3 +43,4 @@ class ClassificationMetrics(Metric):
             "precision": precision.mean(),
             "recall": recall.mean(),
         }
+'''

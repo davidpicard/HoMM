@@ -35,66 +35,42 @@ class ClassificationModule(L.LightningModule):
         img, label = self.train_batch_preprocess(img, label)
         pred = self.model(img)
         loss = self.loss(pred, label, average=True)
-        for metric_name, metric_value in loss.items():
-            self.log(
-                f"train/{metric_name}",
-                metric_value,
-                sync_dist=True,
-                on_step=True,
-                on_epoch=True,
-            )
-        # self.train_metrics.update(pred, label)
+        
+        self.train_metrics(pred, label)
+        
+        self.log(f"train/acc", self.train_metrics, on_step=True, on_epoch=True, prog_bar=True)
+        self.log(f"train/loss", loss['loss'], on_step=True, on_epoch=False, prog_bar=True)
+        
         return loss
 
     def on_train_epoch_end(self):
         pass
-        # metrics = self.train_metrics.compute()
-        # for metric_name, metric_value in metrics.items():
-        #     self.log(
-        #         f"train/{metric_name}",
-        #         metric_value,
-        #         sync_dist=True,
-        #         on_step=False,
-        #         on_epoch=True,
-        #     )
 
     def validation_step(self, batch, batch_idx):
         img, label = batch
         pred = self.model(img)
         loss = self.loss(pred, label, average=True)
+        
         self.val_metrics(pred, label)
-        self.log("val/loss", loss["loss"], sync_dist=True, on_step=False, on_epoch=True)
+
+        self.log("val/loss", loss["loss"], on_step=False, on_epoch=True)
+        self.log("val/acc", self.val_metrics, on_step=False, on_epoch=True)
 
     def on_validation_epoch_end(self):
-        metrics = self.val_metrics.compute()
-        for metric_name, metric_value in metrics.items():
-            self.log(
-                f"val/{metric_name}",
-                metric_value,
-                sync_dist=True,
-                on_step=False,
-                on_epoch=True,
-            )
+        pass
 
     def test_step(self, batch, batch_idx):
         img, label = batch
         pred = self.model(img)
         loss = self.loss(pred, label, average=True)
-        self.test_metrics.update(pred, label)
-        self.log(
-            "test/loss", loss["loss"], sync_dist=True, on_step=False, on_epoch=True
-        )
+        
+        self.test_metrics(pred, label)
+
+        self.log("test/loss", loss["loss"], on_step=False, on_epoch=True)
+        self.log("test/acc", self.test_metrics, on_step=False, on_epoch=True)
 
     def test_epoch_end(self, outputs):
-        metrics = self.test_metrics.compute()
-        for metric_name, metric_value in metrics.items():
-            self.log(
-                f"test/{metric_name}",
-                metric_value,
-                sync_dist=True,
-                on_step=False,
-                on_epoch=True,
-            )
+        pass
 
     def configure_optimizers(self):
         if self.optimizer_cfg.exclude_ln_and_biases_from_weight_decay:

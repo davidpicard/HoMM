@@ -1,2 +1,3 @@
-_target_: utils.metrics.ClassificationMetrics
+_target_: utils.metrics.ClassificationAccuracy
 num_classes: ${data.num_classes}
+top_k: 1
