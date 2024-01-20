@@ -9,7 +9,7 @@ denormalize = transforms.Normalize(
 )
 
 
-def build_imagenet(data_dir, num_classes, size=224, additional_transforms=None):
+def build_imagenet(data_dir, num_classes, size=224, additional_transforms=None, val_scale_ratio=0.8):
     tr = [
         transforms.RandomResizedCrop(size),
         transforms.RandomHorizontalFlip(),
@@ -22,7 +22,7 @@ def build_imagenet(data_dir, num_classes, size=224, additional_transforms=None):
 
     transform_val = transforms.Compose(
         [
-            transforms.Resize(int(size / 0.95)),
+            transforms.Resize(int(size / val_scale_ratio)),
             transforms.CenterCrop(size),
             transforms.ToTensor(),
             normalize,
