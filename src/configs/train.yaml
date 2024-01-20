@@ -24,7 +24,7 @@ checkpoints:
   dirpath: ${checkpoint_dir}/${experiment_name}
   save_last: True
   monitor: val/acc
-  mode: min
+  mode: max
 
 progress_bar:
   _target_: pytorch_lightning.callbacks.TQDMProgressBar
