@@ -60,10 +60,33 @@ def build_imagefolder(data_dir, num_classes, size=224, additional_transforms=Non
     ]
     if additional_transforms is not None:
         tr.extend(additional_transforms)
+    
     transform_train = transforms.Compose(tr)
-
-    return ImageFolder(
-        data_dir,
-        transform_train,
-        target_transform=lambda x: torch.nn.functional.one_hot(x, num_classes).float(),
+    transform_val = transforms.Compose(
+        [
+            transforms.Resize(int(size / 0.95)),
+            transforms.CenterCrop(size),
+            transforms.ToTensor(),
+            normalize,
+        ]
     )
+
+    train = ImageFolder(
+        data_dir+'/train',
+        transform_train,
+        target_transform=lambda x: torch.nn.functional.one_hot(
+            torch.LongTensor([x]), num_classes
+        )
+        .float()
+        .squeeze(0),
+    )
+    val = ImageFolder(
+        data_dir+'/val',
+        transform_val,
+        target_transform=lambda x: torch.nn.functional.one_hot(
+            torch.LongTensor([x]), num_classes
+        )
+        .float()
+        .squeeze(0),
+    )
+    return train, val

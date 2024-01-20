@@ -2,7 +2,7 @@ einops==0.7
 hydra-core==1.3.2
 lsuv==0.2.2
 pytorch-lightning==2.1
-scipy==1.11.4
+scipy
 torch==2.1.2
 torchvision==0.16.2
 torchmetrics==1.3.0.post0

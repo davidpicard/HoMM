@@ -91,6 +91,5 @@ def train(cfg):
 
     trainer.fit(model, datamodule, ckpt_path=ckpt_path)
 
-
 if __name__ == "__main__":
     train()
