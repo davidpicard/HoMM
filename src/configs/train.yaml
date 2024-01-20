@@ -23,7 +23,7 @@ checkpoints:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
   dirpath: ${checkpoint_dir}/${experiment_name}
   save_last: True
-  monitor: val/loss
+  monitor: val/acc
   mode: min
 
 progress_bar:

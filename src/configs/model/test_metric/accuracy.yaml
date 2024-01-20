@@ -1,6 +1,3 @@
-#_target_: utils.metrics.ClassificationMetrics
-#num_classes: ${data.num_classes}
-_target_: torchmetrics.Accuracy
-task: "multiclass"
+_target_: utils.metrics.ClassificationAccuracy
 num_classes: ${data.num_classes}
 top_k: 1

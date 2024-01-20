@@ -53,8 +53,8 @@ class ClassificationModule(L.LightningModule):
         
         self.val_metrics(pred, label)
 
-        self.log("val/acc", loss["loss"], on_step=False, on_epoch=True)
-        self.log("val/loss", self.val_metrics, on_step=False, on_epoch=True)
+        self.log("val/loss", loss["loss"], on_step=False, on_epoch=True)
+        self.log("val/acc", self.val_metrics, on_step=False, on_epoch=True)
 
     def on_validation_epoch_end(self):
         pass
@@ -66,8 +66,8 @@ class ClassificationModule(L.LightningModule):
         
         self.test_metrics(pred, label)
 
-        self.log("test/acc", loss["loss"], on_step=False, on_epoch=True)
-        self.log("test/loss", self.test_metrics, on_step=False, on_epoch=True)
+        self.log("test/loss", loss["loss"], on_step=False, on_epoch=True)
+        self.log("test/acc", self.test_metrics, on_step=False, on_epoch=True)
 
     def test_epoch_end(self, outputs):
         pass
