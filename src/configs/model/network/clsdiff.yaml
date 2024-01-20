@@ -1,0 +1,11 @@
+_target_: model.network.imagediffusion.ClassConditionalHoMDiffusion
+n_classes: ${data.num_classes}
+n_timesteps: 250
+dim: 256
+im_size: ${data.size}
+kernel_size: 8
+n_layers: 4
+order: 2
+order_expand: 4
+ffw_expand: 4
+dropout: 0.0
