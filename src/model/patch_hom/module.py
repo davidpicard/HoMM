@@ -11,7 +11,7 @@ from gluonts.torch.scaler import StdScaler, MeanScaler, NOPScaler
 from gluonts.torch.util import unsqueeze_expand, weighted_average
 from gluonts.torch.model.simple_feedforward import make_linear_layer
 
-from ..layers import HoMLayer
+from ..network.layers import HoMLayer
 
 
 class SinusoidalPositionalEmbedding(nn.Embedding):
