@@ -7,12 +7,15 @@ from hydra.utils import instantiate
 import copy
 import numpy as np
 from torchvision import transforms
+import einops
+
 
 class MAEModule(L.LightningModule):
     def __init__(
         self,
         encoder,
         decoder,
+        mask_prob,
         loss,
         optimizer_cfg,
         lr_scheduler_builder,
@@ -24,6 +27,8 @@ class MAEModule(L.LightningModule):
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
+        
+        self.mask_prob = mask_prob
         self.loss = loss
         self.optimizer_cfg = optimizer_cfg
         self.lr_scheduler_builder = lr_scheduler_builder
@@ -35,17 +40,18 @@ class MAEModule(L.LightningModule):
     def _compose_masks(self, batch):
         imgs, _ = batch
         b, c, h, w = imgs.shape
-
-        mask = torch.bernoulli(torch.empty((b, n_tokens)).uniform_(0, 1), p=args.mask_prob)
+        
+        n_tokens = (self.encoder.im_size//self.encoder.kernel_size)**2
+        mask = torch.bernoulli(torch.empty((b, n_tokens)).uniform_(0, 1), p=self.mask_prob).to(self.device)
         masked_imgs = einops.rearrange(imgs, 'b c (m h) (n w) -> b (m n) (h w c)', c=3,
-                                       m=self.encoder.size // self.encoder.kernel_size, w=self.encoder.kernel_size)
+                                       m=self.encoder.im_size // self.encoder.kernel_size, w=self.encoder.kernel_size)
         masked_imgs = masked_imgs * mask.unsqueeze(-1)
         masked_imgs = einops.rearrange(masked_imgs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
-                                       m=self.encoder.size // self.encoder.kernel_size, w=self.encoder.kernel_size)
-        return masked_imgs
+                                       m=self.encoder.im_size // self.encoder.kernel_size, w=self.encoder.kernel_size)
+        return masked_imgs, mask
 
     def training_step(self, batch, batch_idx):
-        masked_imgs = self._compose_masks(batch)
+        masked_imgs, mask = self._compose_masks(batch)
         imgs, _ = batch
         b, c, h, w = imgs.shape
 
@@ -53,7 +59,7 @@ class MAEModule(L.LightningModule):
         outputs = self.decoder(
             imgs_enc * mask.unsqueeze(-1))  # attend all tokens but don't backprop masked ones to the encoder
         outputs = einops.rearrange(outputs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
-                                   m=self.encoder.size // self.encoder.kernel_size, w=self.encoder.kernel_size)
+                                   m=self.encoder.im_size // self.encoder.kernel_size, w=self.encoder.kernel_size)
 
         loss = self.loss(outputs, imgs)
 
@@ -67,23 +73,22 @@ class MAEModule(L.LightningModule):
             recons = denormalize(outputs[0].float()).squeeze(0)
             self.logger.log_image(key="samples", images=[origin, masked, recons], caption=["origin", "masked", "recons"])
 
-        self.log(f"train/loss", loss['loss'], on_step=True, on_epoch=False, prog_bar=True)
+        self.log(f"train/loss", loss.item(), on_step=True, on_epoch=False, prog_bar=True)
         return loss
 
     def on_train_epoch_end(self):
         pass
 
     def validation_step(self, batch, batch_idx):
-        masked_imgs = self._compose_masks(batch)
+        masked_imgs, mask = self._compose_masks(batch)
         imgs, _ = batch
         b, c, h, w = imgs.shape
-
+         
         imgs_enc = self.encoder(masked_imgs, mask)  # attend only unmask tokens using mask
         outputs = self.decoder(
             imgs_enc * mask.unsqueeze(-1))  # attend all tokens but don't backprop masked ones to the encoder
         outputs = einops.rearrange(outputs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
-                                   m=self.encoder.size // self.encoder.kernel_size, w=self.encoder.kernel_size)
-
+                                   m=self.encoder.im_size // self.encoder.kernel_size, w=self.encoder.kernel_size)
         loss = self.loss(outputs, imgs)
         self.log("val/loss", loss.item(), on_step=False, on_epoch=True)
 
@@ -91,7 +96,7 @@ class MAEModule(L.LightningModule):
         pass
 
     def test_step(self, batch, batch_idx):
-        masked_imgs = self._compose_masks(batch)
+        masked_imgs, mask = self._compose_masks(batch)
         imgs, _ = batch
         b, c, h, w = imgs.shape
 
@@ -99,7 +104,7 @@ class MAEModule(L.LightningModule):
         outputs = self.decoder(
             imgs_enc * mask.unsqueeze(-1))  # attend all tokens but don't backprop masked ones to the encoder
         outputs = einops.rearrange(outputs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
-                                   m=self.encoder.size // self.encoder.kernel_size, w=self.encoder.kernel_size)
+                                   m=h // self.encoder.kernel_size, w=self.encoder.kernel_size)
 
         loss = self.loss(outputs, imgs)
         self.log("test/loss", loss.item(), on_step=False, on_epoch=True)
@@ -152,11 +157,9 @@ class MAEModule(L.LightningModule):
                     "layer_adaptation": False,  # for lamb
                 },
             ]
-            print(optimizer_grouped_parameters)
-            print('*'*100)
             optimizer = self.optimizer_cfg.optim(optimizer_grouped_parameters)
         else:
-            optimizer = self.optimizer_cfg.optim([self.encoder.parameters(), self.decoder.parameters()])
+            optimizer = self.optimizer_cfg.optim(list(self.encoder.parameters())+list(self.decoder.parameters()))
         scheduler = self.lr_scheduler_builder(optimizer)
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 

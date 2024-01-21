@@ -10,6 +10,8 @@ from pathlib import Path
 from omegaconf import OmegaConf
 import torch
 
+from model import MAEModule
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 torch.set_float32_matmul_precision("medium")

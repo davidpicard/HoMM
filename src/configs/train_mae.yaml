@@ -43,15 +43,30 @@ hydra:
   job:
     chdir: true
 
-model.decoder:
-  nb_classes: 3*${model.encoder.kernel_size}**2
-  dim: ${model.encoder.dim}
-  im_size: ${model.encoder.im_size}
-  kernel_size: ${model.encoder.kernel_size}
-  nb_layers: ${model.encoder.nb_layer}
-  order: ${model.encoder.order}
-  order_expand: ${model.encoder.order_expand}
-  ffw_expand: ${model.encoder.ffw_expand}
-  dropout: ${model.encoder.dropout}
-  pooling:
-  in_conv: false
+model:
+  instance:
+    mask_prob: 0.5
+    encoder: 
+      nb_classes: ${model.network.dim} 
+      im_size: ${data.size}
+      dim: ${model.network.dim}
+      kernel_size: ${model.network.kernel_size}
+      nb_layers: ${model.network.nb_layers}
+      order: ${model.network.order}
+      order_expand: ${model.network.order_expand}
+      ffw_expand: ${model.network.ffw_expand}
+      dropout: ${model.network.dropout}
+      pooling: null
+      in_conv: true
+    decoder:
+      nb_classes: 3*${model.network.kernel_size}**2
+      dim: ${model.network.dim}
+      im_size: ${data.size}
+      kernel_size: ${model.network.kernel_size}
+      nb_layers: ${model.network.nb_layers}
+      order: ${model.network.order}
+      order_expand: ${model.network.order_expand}
+      ffw_expand: ${model.network.ffw_expand}
+      dropout: ${model.network.dropout}
+      pooling: null
+      in_conv: false
