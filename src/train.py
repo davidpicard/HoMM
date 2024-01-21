@@ -75,16 +75,35 @@ def train(cfg):
         ckpt_path = None
         if cfg.model.lsuv_normalize:
             from lsuv import lsuv_with_dataloader
-
             datamodule.setup()
-            model.model = lsuv_with_dataloader(
-                model.model,
-                datamodule.train_dataloader(),
-                device=torch.device("cuda:0"),
-                verbose=False,
-            )
-            torch.nn.init.zeros_(model.out_proj.weight)
-            torch.nn.init.constant_(model.out_proj.bias, -6.9)
+            if isinstance(model, MAEModule):
+                #Encoder
+                model.encoder = lsuv_with_dataloader(
+                    model.encoder,
+                    datamodule.train_dataloader(),
+                    device=torch.device("cuda:0"),
+                    verbose=False,
+                )
+                torch.nn.init.zeros_(model.encoder.out_proj.weight)
+                torch.nn.init.constant_(model.encoder.out_proj.bias, -6.9)
+                #Decoder
+                model.decoder = lsuv_with_dataloader(
+                    model.decoder,
+                    datamodule.train_dataloader(),
+                    device=torch.device("cuda:0"),
+                    verbose=False,
+                )
+                torch.nn.init.zeros_(model.decoder.out_proj.weight)
+                torch.nn.init.constant_(model.decoder.out_proj.bias, -6.9)
+            else:
+                model.model = lsuv_with_dataloader(
+                    model.model,
+                    datamodule.train_dataloader(),
+                    device=torch.device("cuda:0"),
+                    verbose=False,
+                )
+                torch.nn.init.zeros_(model.out_proj.weight)
+                torch.nn.init.constant_(model.out_proj.bias, -6.9)
     # Log activation and gradients if wandb
     if cfg.logger._target_ == "pytorch_lightning.loggers.wandb.WandbLogger":
         logger.experiment.watch(model, log="all", log_graph=True, log_freq=100)
