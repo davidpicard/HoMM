@@ -10,16 +10,18 @@ The HoMM scheme is as follows: Having a query token $x_q$ and a set of context t
 /!\ Help welcome: DM me on twitter (https://twitter.com/david_picard), or submit an issue, or email me!
 
 ### Changelog
-20240119: support for lightning and hydra added! Welcome to the multigpu world!
+- 20240120: metrics are fixed. Diffusion branch started. imagenet classification progress (53%->59%).
+- 20240119: support for lightning and hydra added! Welcome to the multigpu world!
 
 ### Fix me
 Easy targets if you want to contribute
-- Solve the "compute metrics during training" : https://github.com/davidpicard/HoMM/issues/5
+- Fix the MAE training with lightning+hydra
 - Make an evaluation script for MAE: it loads the encoder from a MAE checkpoint and trains a classifier on top of it on imagenet. Add the fine-tune all model option
+- Fix the diffusion branch that is for generating class conditional images on ImageNet
 - Make a script that leverages a search tool (like https://docs.ray.io)  to search for good hyper params (lr, wd, order, order_expand and ffw_expand mainly)
 
 ### Currently testing on
-- Vision: ImageNet classification (best 224x224 score so far: 53% top-1 for a 26M params model comparable to ViT-S32 // 20230117)
+- Vision: ImageNet classification (best 224x224 score so far: 59.2% top-1 for a 26M params model comparable to ViT-S32 // 20230117)
 - Vision: Masked Auto Encoder pretraining
 - Probabilistic Time Series Forecasting: Running comparisons against AutoML Forecasting [evaluations](https://arxiv.org/pdf/2308.05566.pdf)
 
