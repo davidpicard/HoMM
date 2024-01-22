@@ -15,7 +15,7 @@ torch.backends.cudnn.allow_tf32 = True
 torch.set_float32_matmul_precision("medium")
 
 
-@hydra.main(config_path="configs", config_name="train", version_base=None)
+@hydra.main(config_path="configs", config_name="train_diffusion", version_base=None)
 def train(cfg):
     dict_config = OmegaConf.to_container(cfg, resolve=True)
 
