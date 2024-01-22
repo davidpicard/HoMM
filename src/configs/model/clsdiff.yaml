@@ -1,5 +1,5 @@
 defaults:
-  - train_batch_preprocess: mixup_and_cutmix
+  - train_batch_preprocess: null
   - network: clsdiff
   - loss: MSE
   - optimizer: adamw
@@ -15,7 +15,6 @@ instance:
   loss: ${model.loss}
   optimizer_cfg: ${model.optimizer}
   lr_scheduler_builder: ${model.lr_scheduler}
-  train_batch_preprocess: ${model.train_batch_preprocess}
 
 
 lsuv_normalize: False
