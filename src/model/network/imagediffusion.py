@@ -45,6 +45,9 @@ class ClassConditionalHoMDiffusion(nn.Module):
         nn.init.trunc_normal_(
             self.time_emb, std=0.02, a=-2 * 0.02, b=2 * 0.02
         )
+        nn.init.trunc_normal_(
+            self.pos_emb, std=0.02, a=-2 * 0.02, b=2 * 0.02
+        )
         self.apply(self.init_weights_)
 
     def init_weights_(self, m):

@@ -21,6 +21,7 @@ checkpoints:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
   dirpath: ${checkpoint_dir}/${experiment_name}
   save_last: True
+  save_on_train_epoch_end: True
 
 progress_bar:
   _target_: pytorch_lightning.callbacks.TQDMProgressBar
