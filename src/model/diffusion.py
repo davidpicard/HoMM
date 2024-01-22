@@ -68,6 +68,7 @@ class DiffusionModule(L.LightningModule):
 
         # sample images
         noise = torch.randn_like(img)
+        label = label.argmax(dim=1)
         label[0] = 1 # goldfish
         label[1] = 9 # ostrich
         label[2] = 18 # magpie
@@ -78,7 +79,6 @@ class DiffusionModule(L.LightningModule):
         label[7] = 409 # analog clock
         samples = self.val_sampler.sample(noise, self.model, label)
         samples = denormalize(samples)
-        label = label.argmax(dim=1)
         self.logger.log_image(
             key="samples",
             images=[samples[0], samples[1], samples[2], samples[3],
