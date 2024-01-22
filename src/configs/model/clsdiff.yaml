@@ -16,5 +16,3 @@ instance:
   optimizer_cfg: ${model.optimizer}
   lr_scheduler_builder: ${model.lr_scheduler}
 
-
-lsuv_normalize: False

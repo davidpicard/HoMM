@@ -68,13 +68,23 @@ class DiffusionModule(L.LightningModule):
 
         # sample images
         noise = torch.randn_like(img)
+        label[0] = 1 # goldfish
+        label[1] = 9 # ostrich
+        label[2] = 18 # magpie
+        label[3] = 249 # malamut
+        label[4] = 928 # ice cream
+        label[5] = 949 # strawberry
+        label[6] = 888 # viaduc
+        label[7] = 409 # analog clock
         samples = self.val_sampler.sample(noise, self.model, label)
         samples = denormalize(samples)
         label = label.argmax(dim=1)
         self.logger.log_image(
             key="samples",
-            images=[samples[0], samples[1], samples[3], samples[4]],
-            caption=[label[1], label[2], label[3], label[4]]
+            images=[samples[0], samples[1], samples[2], samples[3],
+                    samples[4], samples[5], samples[6], samples[7]],
+            caption=["goldfish", "ostrich", "magpie", "malamute",
+                     "ice cream", "strawberry", "viaduc", "analog clock"]
         )
 
     def configure_optimizers(self):
