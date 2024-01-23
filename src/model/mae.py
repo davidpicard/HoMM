@@ -61,7 +61,7 @@ class MAEModule(L.LightningModule):
         outputs = einops.rearrange(outputs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
                                    m=self.encoder.im_size // self.encoder.kernel_size, w=self.encoder.kernel_size)
 
-        loss = self.loss(outputs, imgs)
+        loss = self.loss(outputs, imgs, average=True)
 
         if batch_idx % 50 == 0:
             denormalize = transforms.Normalize(
@@ -73,7 +73,7 @@ class MAEModule(L.LightningModule):
             recons = denormalize(outputs[0].float()).squeeze(0)
             self.logger.log_image(key="samples", images=[origin, masked, recons], caption=["origin", "masked", "recons"])
 
-        self.log(f"train/loss", loss.item(), on_step=True, on_epoch=False, prog_bar=True)
+        self.log(f"train/loss", loss['loss'], on_step=True, on_epoch=False, prog_bar=True)
         return loss
 
     def on_train_epoch_end(self):
@@ -89,8 +89,8 @@ class MAEModule(L.LightningModule):
             imgs_enc * mask.unsqueeze(-1))  # attend all tokens but don't backprop masked ones to the encoder
         outputs = einops.rearrange(outputs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
                                    m=self.encoder.im_size // self.encoder.kernel_size, w=self.encoder.kernel_size)
-        loss = self.loss(outputs, imgs)
-        self.log("val/loss", loss.item(), on_step=False, on_epoch=True)
+        loss = self.loss(outputs, imgs, average=True)
+        self.log("val/loss", loss['loss'], on_step=False, on_epoch=True)
 
     def on_validation_epoch_end(self):
         pass
@@ -106,8 +106,8 @@ class MAEModule(L.LightningModule):
         outputs = einops.rearrange(outputs, 'b (m n) (h w c) -> b c (m h) (n w)', c=3,
                                    m=h // self.encoder.kernel_size, w=self.encoder.kernel_size)
 
-        loss = self.loss(outputs, imgs)
-        self.log("test/loss", loss.item(), on_step=False, on_epoch=True)
+        loss = self.loss(outputs, imgs, average=True)
+        self.log("test/loss", loss['loss'], on_step=False, on_epoch=True)
 
     def test_epoch_end(self, outputs):
         pass

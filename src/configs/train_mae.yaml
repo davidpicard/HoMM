@@ -1,6 +1,6 @@
 defaults:
   - model: homm_mae
-  - computer: 2-gpu
+  - computer: 1-gpu
   - data: imagenet
   - logger: wandb
   - _self_

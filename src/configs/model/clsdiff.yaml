@@ -1,0 +1,18 @@
+defaults:
+  - train_batch_preprocess: null
+  - network: clsdiff
+  - loss: MSE
+  - optimizer: adamw
+  - lr_scheduler: warmup_cosine_decay
+  - sampler: ddim
+
+name: HoMMClsDiff
+instance:
+  _target_: model.diffusion.DiffusionModule
+  model: ${model.network}
+  mode: "eps"
+  val_sampler: ${model.sampler}
+  loss: ${model.loss}
+  optimizer_cfg: ${model.optimizer}
+  lr_scheduler_builder: ${model.lr_scheduler}
+

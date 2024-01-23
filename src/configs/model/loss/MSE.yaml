@@ -1,2 +1,1 @@
-_target_: torch.nn.MSELoss
-reduction: 'mean'
+_target_: model.losses.MSE.MSELossModule
