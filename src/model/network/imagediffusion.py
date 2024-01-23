@@ -33,6 +33,7 @@ class ClassConditionalHoMDiffusion(nn.Module):
 
         self.n_patches = (im_size//kernel_size)
         self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches**2, dim)))
+        self.register = nn.Parameter(torch.zeros(1, 4, dim), requires_grad=True)
 
         self.in_conv = nn.Conv2d(3, dim, kernel_size=kernel_size, stride=kernel_size)
         self.layers = nn.ModuleList([HoMLayer(dim, order, order_expand, ffw_expand, dropout) for i in range(n_layers)])
@@ -47,6 +48,9 @@ class ClassConditionalHoMDiffusion(nn.Module):
         )
         nn.init.trunc_normal_(
             self.pos_emb, std=0.02, a=-2 * 0.02, b=2 * 0.02
+        )
+        nn.init.trunc_normal_(
+            self.register, std=0.02, a=-2 * 0.02, b=2 * 0.02
         )
         self.apply(self.init_weights_)
 
@@ -68,6 +72,8 @@ class ClassConditionalHoMDiffusion(nn.Module):
         x = einops.rearrange(x, 'b d h w -> b (h w) d')
         b, n, d = x.shape
         x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
+        # add registers
+        x = torch.cat([self.register* torch.ones((b, 1, 1)).to(x.device), x], dim=1)
 
         # forward pass
         for l in range(self.n_layers):
@@ -76,6 +82,9 @@ class ClassConditionalHoMDiffusion(nn.Module):
             x = torch.cat([t, c, x], dim=1)
             x = self.layers[l](x)
             x = x[:,2:, :]
+
+        #remove register
+        x = x[:, 4:, :]
 
         # depatchify
         out = self.outproj(x)
