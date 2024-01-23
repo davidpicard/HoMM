@@ -4,9 +4,10 @@ import torch.nn as nn
 from .layers import HoMLayer
 
 class HoMVision(nn.Module):
-    def __init__(self, nb_classes, dim=256, im_size=256, kernel_size=16, nb_layers=12, order=4, order_expand=8,
-                 ffw_expand=4, dropout=0., pooling='cls', in_conv=True):
+    def __init__(self, nb_classes: int, dim:int=256, im_size:int=256, kernel_size:int=16, nb_layers:int=12, order:int=4, order_expand:int=8,
+            ffw_expand:int=4, dropout:int=0., pooling:str='cls', in_conv:bool=True):
         super().__init__()
+        nb_classes = nb_classes if type(nb_classes) == int else eval(nb_classes)
         self.nb_classes = nb_classes
         self.dim = dim
         self.im_size = im_size

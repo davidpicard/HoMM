@@ -1,0 +1,72 @@
+defaults:
+  - model: homm_mae
+  - computer: 1-gpu
+  - data: imagenet
+  - logger: wandb
+  - _self_
+
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_steps: 300000
+  deterministic: True
+  devices: ${computer.devices}
+  accelerator: ${computer.accelerator}
+  strategy: ${computer.strategy}
+  log_every_n_steps: 1
+  num_nodes: ${computer.num_nodes}
+  precision: ${computer.precision}
+  gradient_clip_val: 1.0
+  val_check_interval: 1000
+  check_val_every_n_epoch: null
+  
+checkpoints:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  dirpath: ${checkpoint_dir}/${experiment_name}
+  save_last: True
+  monitor: val/loss
+  mode: min
+
+progress_bar:
+  _target_: pytorch_lightning.callbacks.TQDMProgressBar
+  refresh_rate: ${computer.progress_bar_refresh_rate}
+
+seed: 3407
+data_dir: ${root_dir}/datasets
+root_dir:  ${hydra:runtime.cwd}
+checkpoint_dir: ${root_dir}/checkpoints
+experiment_name_suffix: base
+experiment_name: ${data.name}_${model.name}_${experiment_name_suffix}
+
+hydra:
+  run:
+    dir: outputs/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}/${experiment_name}
+  job:
+    chdir: true
+
+model:
+  instance:
+    mask_prob: 0.5
+    encoder: 
+      nb_classes: ${model.network.dim} 
+      im_size: ${data.size}
+      dim: ${model.network.dim}
+      kernel_size: ${model.network.kernel_size}
+      nb_layers: ${model.network.nb_layers}
+      order: ${model.network.order}
+      order_expand: ${model.network.order_expand}
+      ffw_expand: ${model.network.ffw_expand}
+      dropout: ${model.network.dropout}
+      pooling: null
+      in_conv: true
+    decoder:
+      nb_classes: 3*${model.network.kernel_size}**2
+      dim: ${model.network.dim}
+      im_size: ${data.size}
+      kernel_size: ${model.network.kernel_size}
+      nb_layers: ${model.network.nb_layers}
+      order: ${model.network.order}
+      order_expand: ${model.network.order_expand}
+      ffw_expand: ${model.network.ffw_expand}
+      dropout: ${model.network.dropout}
+      pooling: null
+      in_conv: false

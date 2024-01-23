@@ -1,0 +1,25 @@
+defaults:
+  - train_batch_preprocess: mixup_and_cutmix  
+  - network: homm.yaml
+  - loss: MSE
+  - optimizer: adamw
+  - lr_scheduler: warmup_cosine_decay
+  - train_metric: accuracy  #Placeholders. Are not used in MAE training
+  - val_metric: accuracy
+  - test_metric: accuracy
+
+name: HoMM-MAE
+instance:
+  _target_: model.mae.MAEModule
+  encoder: ${model.network}
+  decoder: ${model.network}
+  loss: ${model.loss}
+  optimizer_cfg: ${model.optimizer}
+  lr_scheduler_builder: ${model.lr_scheduler}
+  train_batch_preprocess: ${model.train_batch_preprocess}
+  train_metrics: ${model.train_metric}
+  val_metrics: ${model.val_metric}
+  test_metrics: ${model.test_metric}
+
+
+lsuv_normalize: False
