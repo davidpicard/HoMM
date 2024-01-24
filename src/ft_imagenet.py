@@ -78,6 +78,7 @@ parser.add_argument("--dropout", type=float, default=0.0)  # ok
 parser.add_argument("--wd", type=float, default=0.0)  # ok
 # training params
 parser.add_argument("--lr", type=float, default=0.000001)  # ok
+parser.add_argument("--ft", type=bool, default=False)
 parser.add_argument("--batch_size", type=int, default=256)  # ok
 parser.add_argument("--val_batch_size", type=int, default=25)  # ok
 parser.add_argument("--max_iteration", type=int, default=100000)  # ok
@@ -150,12 +151,6 @@ model = HoMVision(
     args.dropout,
 )
 model = model.to(device)
-model = lsuv_with_dataloader(
-    model, train_ds, device=torch.device(device), verbose=False
-)
-nn.init.zeros_(model.out_proj.weight)
-nn.init.constant_(model.out_proj.bias, -6.9)
-
 model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(
     args.size,
     args.kernel_size,
@@ -166,8 +161,20 @@ model_name = "i{}_k_{}_d{}_n{}_o{}_e{}_f{}".format(
     args.ffw_expand,
 )
 
+
+print("loading weights from chekpoint: {}".format(args.load_weights))
+ckpt = torch.load(args.load_weights)
+model.load_state_dict(ckpt["model"])
+model = model.to(device)
+
+
+if args.ft:
+    parameters = model.parameters()
+else:
+    parameters = model.out_proj.parameters()
+
 optimizer = torch.optim.AdamW(
-    params=model.out_proj.parameters(), lr=args.lr, weight_decay=args.wd
+    params=parameters, lr=args.lr, weight_decay=args.wd
 )
 scaler = torch.cuda.amp.GradScaler(enabled=True)
 # sched = torch.optim.lr_scheduler.OneCycleLR(
@@ -179,11 +186,6 @@ scaler = torch.cuda.amp.GradScaler(enabled=True)
 # )
 start_step = 1
 start_epoch = 0
-
-print("loading weights from chekpoint: {}".format(args.load_weights))
-ckpt = torch.load(args.load_weights)
-model.load_state_dict(ckpt["model"])
-model = model.to(device)
 
 
 print("model and optimizer built")
