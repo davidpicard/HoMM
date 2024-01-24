@@ -3,7 +3,7 @@ nb_classes: ${data.num_classes}
 dim: 256
 im_size: ${data.size}
 kernel_size: 32
-nb_layers: 12
+n_layers: 12
 order: 2
 order_expand: 4
 ffw_expand: 4

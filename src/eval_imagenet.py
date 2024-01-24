@@ -20,6 +20,7 @@ parser.add_argument("--batch_size", type=int, default=128)
 parser.add_argument("--val_batch_size", type=int, default=25)
 parser.add_argument("--num_worker", type=int, default=4)
 parser.add_argument("--precision", type=str, default="float")
+parser.add_argument("--kernel_size", type=int, default=32)
 args = parser.parse_args()
 
 precision_type = torch.float
@@ -37,16 +38,16 @@ val_ds = DataLoader(val, batch_size=args.val_batch_size, num_workers=2)
 # model
 print('loading model from checkpoint: {}'.format(args.checkpoint))
 ckpt = torch.load(args.checkpoint)
-# resume_args = SimpleNamespace(**ckpt['train_config'])
-# model = HoMVision(1000, resume_args.dim, resume_args.size, resume_args.kernel_size, resume_args.nb_layers,
-#                   resume_args.order, resume_args.order_expand,
-#                   resume_args.ffw_expand, resume_args.dropout)
-model = HoMVision(1000, 384, 224, 32, 8,
-                  2, 4,
-                  4, 0.)
-plmodel = ClassificationModule(model, CrossEntropyLossModule, None, None, None, None, None, None)
-plmodel.load_state_dict(ckpt['state_dict'])
-model = plmodel.model.to(device)
+resume_args = SimpleNamespace(**ckpt['train_config'])
+model = HoMVision(1000, resume_args.dim, resume_args.size, resume_args.kernel_size, resume_args.nb_layers,
+                  resume_args.order, resume_args.order_expand,
+                  resume_args.ffw_expand, 0.)
+# model = HoMVision(1000, 384, 224, args.kernel_size, 8,
+#                   2, 4,
+#                   4, 0.)
+# plmodel = ClassificationModule(model, CrossEntropyLossModule, None, None, None, None, None, None)
+model.load_state_dict(ckpt['model'])
+model = model.to(device)
 # model = ClassificationModule.load_from_checkpoint(args.checkpoint).to(device)
 model.eval()
 
