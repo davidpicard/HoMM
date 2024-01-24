@@ -89,6 +89,12 @@ def train(cfg):
     if cfg.logger._target_ == "pytorch_lightning.loggers.wandb.WandbLogger":
         logger.experiment.watch(model, log="all", log_graph=True, log_freq=100)
 
+    #if checkpoint, then load
+    try:
+        model = hydra.utils.get_method(cfg.model.instance+".load_from_checkpoint")(cfg.chekpoint)
+    except:
+        print("loading weight from checkpoint failed")
+
     trainer.fit(model, datamodule, ckpt_path=ckpt_path)
 
 if __name__ == "__main__":
