@@ -1,0 +1,15 @@
+dataset: 
+  name: cora
+training_args:
+  device: cpu
+  n_gpus: 0
+hyperp_model:
+  n_layers: [1, 3]
+  order: [2, 4]
+  order_expand: [2, 8]
+  ffw_expand: [2, 4]
+  dropout: [0.0, 0.6]
+hyperp_training:
+  learning_rate: [0.00001, 0.001]
+  weight_decay: [0, 0.3]
+  n_epochs: [1]
