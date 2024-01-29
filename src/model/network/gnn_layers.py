@@ -197,6 +197,7 @@ def init_trainer(training_args, hyperp_training, session_dir):
 def evaluate_best_model(model, data_loader, best_model_path):
     # test_result = trainer.test(model, dataloaders=data_loader, verbose=False)
     batch = next(iter(data_loader))
+    batch = [t.to(model._device) for t in batch]
     best_model_name = os.path.basename(best_model_path)
     print(f"=== Best model ({best_model_name}) performance ===")
     _, train_acc = model.forward(batch, mode="train")
