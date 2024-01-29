@@ -10,6 +10,6 @@ hyperp_model:
   ffw_expand: 2
   dropout: 0.0
 hyperp_training:
-  learning_rate: .0005
-  weight_decay: .0005
-  n_epochs: 10
+  learning_rate: .0001
+  weight_decay: 0
+  n_epochs: 35

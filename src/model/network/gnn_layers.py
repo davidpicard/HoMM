@@ -210,6 +210,13 @@ def print_results(results):
         print(f"{k}-accuracy = {v}")
 
 
+def save_summary_results(results, session_dir):
+    with open(session_dir + "/summary_results.txt", "w") as file:
+        for key, value in results.items():
+            file.write(f"{key} = {value.item()}\n")
+    return
+
+
 def train_and_eval_gnn(
     model_pl,
     data_loader,
@@ -249,4 +256,6 @@ def train_and_eval_gnn(
     results = evaluate_best_model(model, data_loader, best_model_path)
     # Print results
     print_results(results)
+    # Save results
+    save_summary_results(results, session_dir)
     return model, results, session_dir
