@@ -39,6 +39,20 @@ python src/train.py data.dataset_builder.data_dir=path_to_imagenet seed=3407 mod
 python src/train.py --config-name train_mae data.dataset_builder.data_dir=path_to_dataset seed=3407 model.network.dim=128  data.size=256 model.network.kernel_size=16 model.network.nb_layers=8 model.network.order=4 model.network.order_expand=8 model.network.ffw_expand=4  model.network.dropout=0.0 model.optimizer.optim.weight_decay=0.01 model.optimizer.optim.lr=1e-3 data.full_batch_size=256 trainer.max_steps=300000 model.lr_scheduler.warmup_steps=10000 computer.num_workers=8 computer.precision=bf16-mixed data/additional_train_transforms=randaugment data.additional_train_transforms.randaugment_p=0.1 data.additional_train_transforms.randaugment_magnitude=6 model.train_batch_preprocess.apply_transform_prob=1.0 checkpoint_dir="./checkpoints/"
 ```
 
+### GAT-HoMM: a Graph Neural Network with HoMM Attention
+- Results: accuracy on the 1000 test nodes of the Cora dataset (https://arxiv.org/pdf/1710.10903.pdf) of 0.805
+- To reproduce, execute:
+  - ```python
+    python src/train_gnn.py
+    ```
+- To run hyperparameter optimization, execute:
+  - ```python
+    python src/optimize_hps_gnn.py
+    ```
+- Illustrative notebook: ```src/gnn_homm_nb.ipynb```
+- Default configuration file for train_gnn.py: ```src/configs/train_gnn.yml```
+- Default configuration file for optimize_hps_gnn.py: ```src/configs/hp_opt_gnn.yml```
+
 ### TODO:
 - Vision: diffusion model
 - NLP: sentence embedding
