@@ -7,3 +7,4 @@ torch==2.1.2
 torchvision==0.16.2
 torchmetrics==1.3.0.post0
 wandb==0.16.2
+spektral
