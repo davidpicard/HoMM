@@ -9,7 +9,7 @@ def cosine_schedule(t):
 
 
 import matplotlib.pyplot as plt
-
+import einops
 from ..diffusion import denormalize
 
 class DDIM():
