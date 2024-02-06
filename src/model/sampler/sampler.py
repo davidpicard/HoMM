@@ -26,14 +26,14 @@ class DDIM():
         if progress_bar is not None:
             r = progress_bar(r)
         for n in r:
-            t_cur = self.schedule(r/self.n_steps )
+            t_cur = self.schedule(n/self.n_steps )
             eps = model(x_cur, ctx, t_cur)
 
             x_0 = (x_cur - torch.sqrt(t_cur).reshape(b, 1, 1, 1)*eps)/torch.sqrt(1-t_cur).reshape(b, 1, 1, 1)
             x_0 = torch.clamp(x_0, -1., 1)
 
             # prev step
-            t_cur = self.schedule((r-1)/self.n_steps ).reshape(b, 1, 1, 1)
+            t_cur = self.schedule((n-1)/self.n_steps ).reshape(b, 1, 1, 1)
             x_cur = torch.sqrt(1-t_cur) * x_0 + torch.sqrt(t_cur)*eps
 
         return x_cur
