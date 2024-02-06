@@ -56,6 +56,11 @@ class DiffusionModule(L.LightningModule):
         time = torch.rand(b).to(img.device)
         eps = torch.randn_like(img)
         img = torch.sqrt(1-time).reshape(b, 1, 1, 1) * img + torch.sqrt(time).reshape(b, 1, 1, 1) * eps
+        self.logger.log_image(
+            key="image_input",
+            images=[img[0], img[1], img[2], img[3],
+                    img[4], img[5], img[6], img[7]]
+        )
         pred = self.model(img, label, time)
         loss = self.loss(pred, eps, average=True)
         for metric_name, metric_value in loss.items():
@@ -66,6 +71,18 @@ class DiffusionModule(L.LightningModule):
                 on_step=True,
                 on_epoch=True,
             )
+        self.logger.log_image(
+            key="noise_predictions",
+            images=[pred[0], pred[1], pred[2], pred[3],
+                    pred[4], pred[5], pred[6], pred[7]]
+        )
+        x_0 = (img - torch.sqrt(time).reshape(b, 1, 1, 1) * pred) / torch.sqrt(1 - time).reshape(b, 1, 1, 1)
+        x_0 = torch.clamp(x_0, -1., 1)
+        self.logger.log_image(
+            key="image_predictions",
+            images=[x_0[0], x_0[1], x_0[2], x_0[3],
+                    x_0[4], x_0[5], x_0[6], x_0[7]]
+        )
 
         # sample images
         noise = torch.randn_like(img)

@@ -2,16 +2,23 @@ from torchvision import transforms
 from torchvision.datasets import ImageNet, ImageFolder
 import torch
 
-normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+# normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+# denormalize = transforms.Normalize(
+#     mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
+#     std=[1.0 / 0.229, 1.0 / 0.224, 1.0 / 0.225],
+# )
+
+normalize = transforms.Normalize(mean=0.5, std=0.5)
 denormalize = transforms.Normalize(
-    mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
-    std=[1.0 / 0.229, 1.0 / 0.224, 1.0 / 0.225],
+    mean=-1.,
+    std=2.,
 )
 
 
 def build_imagenet(data_dir, num_classes, size=224, additional_transforms=None, val_scale_ratio=0.8):
     tr = [
-        transforms.RandomResizedCrop(size),
+        # transforms.RandomResizedCrop(size),
+        transforms.CenterCrop(size),
         transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
         normalize,

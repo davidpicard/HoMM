@@ -48,7 +48,7 @@ class ImageDataModule(L.LightningDataModule):
         return DataLoader(
             self.val_dataset,
             batch_size=self.val_batch_size,
-            shuffle=False,
+            shuffle=True,
             num_workers=self.num_workers,
         )
 
