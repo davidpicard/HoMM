@@ -7,11 +7,6 @@ def cosine_schedule(t):
     t = torch.cos((1-t) * torch.pi / 2)
     return torch.clamp(t, 1e-6, 1.-1e-6)
 
-
-import matplotlib.pyplot as plt
-import einops
-from ..diffusion import denormalize
-
 class DDIM():
     def __init__(
             self,
@@ -35,12 +30,6 @@ class DDIM():
 
             x_0 = (x_cur - torch.sqrt(t_cur).reshape(b, 1, 1, 1)*eps)/torch.sqrt(1-t_cur).reshape(b, 1, 1, 1)
             x_0 = torch.clamp(x_0, -1., 1)
-
-            # if n%25 == 0:
-            #     samples = denormalize(x_0).detach().cpu()
-            #     samples = einops.rearrange(samples, "(b m) c h w -> (b h) (m w) c", b=2)
-            #     plt.imshow(samples)
-            #     plt.show()
 
             # prev step
             t_cur = self.schedule((n-1)/self.n_steps  * torch.ones(b).to(x_cur.device)).reshape(b, 1, 1, 1)
