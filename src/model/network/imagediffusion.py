@@ -39,6 +39,42 @@ class AttentionModule(nn.Module):
         return x
 
 
+class DiTBlock(nn.Module):
+    def __init__(self, dim, n_classes, n_heads, n_timesteps=250):
+        super().__init__()
+        self.dim = dim
+        self.n_classes = n_classes
+        self.n_heads = n_heads
+        self.n_timesteps = n_timesteps
+
+        self.mha_ln = nn.LayerNorm(dim)
+        self.mha = nn.MultiheadAttention(dim, num_heads=n_heads)
+        self.ffw_ln = nn.LayerNorm(dim)
+        self.ffw = nn.Sequential(nn.LayerNorm(dim),
+                                 nn.Linear(dim, 4 * dim),
+                                 nn.GELU(),
+                                 nn.LayerNorm(4 * dim),
+                                 nn.Linear(4 * dim, dim))
+        self.cond_mlp = nn.Sequential(nn.LayerNorm(dim),
+                                 nn.Linear(dim, 4 * dim),
+                                 nn.GELU(),
+                                 nn.LayerNorm(4 * dim),
+                                 nn.Linear(4 * dim, 6))
+
+    def forward(self, x, c, t):
+        ones = torch.ones(1, 1, 1, self.dim).to(x.device)
+        mod = self.cond_mlp(c+t).permute(1,0).unsqueeze(-1).unsqueeze(-1) * ones
+
+        # mha
+        x_ln = self.mha_ln(x)*mod[0] + mod[1]
+        x = x + self.mha(x_ln, x_ln, x_ln)[0]*mod[2]
+
+        #ffw
+        x_ln = self.ffw_ln(x)*mod[3] + mod[4]
+        x = x + self.ffw(x_ln)*mod[5]
+
+        return x
+
 
 class ClassConditionalHoMDiffusion(nn.Module):
     def __init__(self,
@@ -69,17 +105,18 @@ class ClassConditionalHoMDiffusion(nn.Module):
 
         self.n_patches = (im_size//kernel_size)
         self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches**2, dim)))
-        self.n_registers = 16
-        self.register = nn.Parameter(torch.zeros(1, self.n_registers, dim), requires_grad=True)
+        # self.n_registers = 16
+        # self.register = nn.Parameter(torch.zeros(1, self.n_registers, dim), requires_grad=True)
 
         self.in_conv = nn.Conv2d(3, dim, kernel_size=kernel_size, stride=kernel_size)
         # self.sa_layers = nn.ModuleList([HoMLayer(dim, order, order_expand, ffw_expand, dropout) for i in range(n_layers)])
         # self.ca_layers = nn.ModuleList(
         #     [HoMLayer(dim, order, order_expand, ffw_expand, dropout) for i in range(n_layers)])
         self.sa_layers = nn.ModuleList(
-            [AttentionModule(dim, order, order_expand, ffw_expand, dropout) for i in range(n_layers)])
-        self.ca_layers = nn.ModuleList(
-            [AttentionModule(dim, order, order_expand, ffw_expand, dropout) for i in range(n_layers)])
+            [DiTBlock(dim, n_classes, order, n_timesteps) for i in range(n_layers)])
+        # self.ca_layers = nn.ModuleList(
+        #     [AttentionModule(dim, order, order_expand, ffw_expand, dropout) for i in range(n_layers)])
+        self.out_ln = nn.LayerNorm(dim)
         self.outproj = nn.Linear(dim, kernel_size*kernel_size*3)
 
         # init
@@ -92,9 +129,9 @@ class ClassConditionalHoMDiffusion(nn.Module):
         nn.init.trunc_normal_(
             self.pos_emb, std=0.02, a=-2 * 0.02, b=2 * 0.02
         )
-        nn.init.trunc_normal_(
-            self.register, std=0.02, a=-2 * 0.02, b=2 * 0.02
-        )
+        # nn.init.trunc_normal_(
+        #     self.register, std=0.02, a=-2 * 0.02, b=2 * 0.02
+        # )
         self.apply(self.init_weights_)
 
     def init_weights_(self, m):
@@ -117,23 +154,26 @@ class ClassConditionalHoMDiffusion(nn.Module):
         x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
 
         # registers
-        r = self.register * torch.ones((b, 1, 1)).to(x.device)
+        # r = self.register * torch.ones((b, 1, 1)).to(x.device)
 
         # forward pass
         for l in range(self.n_layers):
             #CA
-            c = self.classes_emb[l, cls.argmax(dim=1)].unsqueeze(1)
-            t = (t1*self.time_emb[l, tq, ...] + t2*self.time_emb[l, tq+1, ...]).unsqueeze(1)
-            ctx = torch.cat([t, c], dim=1)
-            r = self.ca_layers[l](r, xc=ctx) # registers read from ctx
+            c = self.classes_emb[l, cls.argmax(dim=1)]
+            t = (t1*self.time_emb[l, tq, ...] + t2*self.time_emb[l, tq+1, ...])
+            # ctx = torch.cat([t, c], dim=1)
+            # r = self.ca_layers[l](r, xc=ctx) # registers read from ctx
             # sa
-            x = torch.cat([r, x], dim=1)
-            x = self.sa_layers[l](x) # both r and x read from everything
-            x = x[:,self.n_registers:, :]
-            r = x[:, :self.n_registers, :]
+            # x = torch.cat([r, x], dim=1)
+            # x = self.sa_layers[l](x) # both r and x read from everything
+            # x = x[:,self.n_registers:, :]
+            # r = x[:, :self.n_registers, :]
+
+            # dit
+            x = self.sa_layers[l](x, c, t)
 
         # depatchify
-        out = self.outproj(x)
+        out = self.outproj(self.out_ln(x))
         out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
                                h=self.n_patches, k=self.kernel_size, c=3)
 
