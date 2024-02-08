@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from .layers import HoMLayer
 
 
-def modulation(x, scale, bias)
+def modulation(x, scale, bias):
     return x * (1+scale.unsqueze(1)) + bias.unsqueeze(1)
 
 class AttentionModule(nn.Module):
