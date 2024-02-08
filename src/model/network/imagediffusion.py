@@ -6,8 +6,10 @@ from .layers import HoMLayer
 
 
 def modulation(x, scale, bias):
+    scale = scale.unsqueeze(1)
+    bias = bias.unsqueeze(1)
     print(x.shape, scale.shape, bias.shape)
-    return x * (1+scale.unsqueeze(1)) + bias.unsqueeze(1)
+    return x * (1+scale) + bias
 
 class AttentionModule(nn.Module):
     def __init__(self, dim, order, order_expand, ffw_expand, dropout=0.):
