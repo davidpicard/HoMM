@@ -8,7 +8,6 @@ from .layers import HoMLayer
 def modulation(x, scale, bias):
     scale = scale.unsqueeze(1)
     bias = bias.unsqueeze(1)
-    print(x.shape, scale.shape, bias.shape)
     return x * (1+scale) + bias
 
 class AttentionModule(nn.Module):
@@ -78,11 +77,11 @@ class DiTBlock(nn.Module):
 
         # mha
         x_ln = modulation(self.mha_ln(x), s1, b1)
-        x = x + self.mha(x_ln, x_ln, x_ln)[0]*g1
+        x = x + self.mha(x_ln, x_ln, x_ln)[0]*g1.unsqueeze(1)
 
         #ffw
         x_ln = modulation(self.ffw_ln(x), s2, b2)
-        x = x + self.ffw(x_ln)*g2
+        x = x + self.ffw(x_ln)*g2.unsqueeze(1)
 
         return x
 
