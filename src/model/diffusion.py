@@ -1,6 +1,7 @@
 
 import pytorch_lightning as L
 import torch
+import torch.nn as nn
 from torchvision.transforms import transforms
 
 denormalize = transforms.Normalize(
@@ -46,6 +47,7 @@ class DiffusionModule(L.LightningModule):
                 sync_dist=True,
                 on_step=True,
                 on_epoch=True,
+                prog_bar = True
             )
         return loss
 
