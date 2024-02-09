@@ -53,14 +53,12 @@ class DiTBlock(nn.Module):
         self.mha_ln = nn.LayerNorm(dim)
         self.mha = nn.MultiheadAttention(dim, num_heads=n_heads)
         self.ffw_ln = nn.LayerNorm(dim)
-        self.ffw = nn.Sequential(nn.LayerNorm(dim),
-                                 nn.Linear(dim, 4 * dim, bias=True),
-                                 nn.GELU(),
+        self.ffw = nn.Sequential(nn.Linear(dim, 4 * dim, bias=True),
+                                 nn.GELU(approximate="tanh"),
                                  nn.LayerNorm(4 * dim),
                                  nn.Linear(4 * dim, dim, bias=True))
         self.cond_mlp = nn.Sequential(
-                                 nn.GELU(),
-                                 nn.LayerNorm(dim),
+                                 nn.SiLU(),
                                  nn.Linear(dim, 6 * dim, bias=True))
 
     def init_modulation_(self, m):
@@ -69,8 +67,8 @@ class DiTBlock(nn.Module):
             if m.bias is not None:
                 nn.init.zeros_(m.bias)
 
-    def forward(self, x, c, t):
-        g1, s1, b1, g2, s2, b2 = self.cond_mlp(c+t).chunk(6, -1)
+    def forward(self, x, c):
+        g1, s1, b1, g2, s2, b2 = self.cond_mlp(c).chunk(6, -1)
 
         # mha
         x_ln = modulation(self.mha_ln(x), s1.unsqueeze(1), b1.unsqueeze(1))
@@ -106,8 +104,8 @@ class ClassConditionalDiT(nn.Module):
         self.ffw_expand = ffw_expand
         self.dropout = dropout
 
-        self.classes_emb = nn.Parameter(torch.zeros((n_layers, n_classes, dim)), requires_grad=True)
-        self.time_emb = nn.Parameter(torch.zeros((n_layers, n_timesteps + 1, dim)), requires_grad=True)
+        self.classes_emb = nn.Embedding(n_classes + 1, dim)
+        self.time_emb = nn.Embedding(n_timesteps + 1, dim)
 
         self.n_patches = (im_size // kernel_size)
         self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)))
@@ -124,18 +122,15 @@ class ClassConditionalDiT(nn.Module):
 
         # init
         nn.init.trunc_normal_(
-            self.classes_emb, std=0.02, a=-2 * 0.02, b=2 * 0.02
-        )
-        nn.init.trunc_normal_(
-            self.time_emb, std=0.02, a=-2 * 0.02, b=2 * 0.02
-        )
-        nn.init.trunc_normal_(
             self.pos_emb, std=0.02, a=-2 * 0.02, b=2 * 0.02
         )
         self.apply(self.init_weights_)
         for l in self.layers:
             l.apply(l.init_modulation_)
         nn.init.zeros_(self.out_proj.weight)
+        nn.init.zeros_(self.out_proj.bias)
+        nn.init.zeros_(self.out_mod[-1].weight)
+        nn.init.zeros_(self.out_mod[-1].bias)
 
     def init_weights_(self, m):
         if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
@@ -147,8 +142,6 @@ class ClassConditionalDiT(nn.Module):
         # quantize time
         time = time * self.n_timesteps
         tq = torch.clamp(time.floor().long(), 0, self.n_timesteps)
-        t2 = (time - tq).unsqueeze(1)
-        t1 = 1 - t2
 
         # patchify
         x = self.in_conv(img)
@@ -156,12 +149,15 @@ class ClassConditionalDiT(nn.Module):
         b, n, d = x.shape
         x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
 
+        # cond
+        c = self.classes_emb(cls.argmax(dim=1))
+        t = self.time_emb(tq)
+        c = c+t
+
         # forward pass
         for l in range(self.n_layers):
             # CA
-            c = self.classes_emb[l, cls.argmax(dim=1)]
-            t = (t1 * self.time_emb[l, tq, ...] + t2 * self.time_emb[l, tq + 1, ...])
-            x = self.layers[l](x, c, t)
+            x = self.layers[l](x, c)
 
         # depatchify
         s, b = self.out_mod(x).chunk(2, dim=-1)
