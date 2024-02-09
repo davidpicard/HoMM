@@ -134,6 +134,7 @@ class ClassConditionalDiT(nn.Module):
         self.apply(self.init_weights_)
         for l in self.layers:
             l.apply(l.init_modulation_)
+        nn.init.zeros_(self.outproj.weight)
 
     def init_weights_(self, m):
         if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
