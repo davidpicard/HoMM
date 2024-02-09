@@ -6,8 +6,6 @@ from .layers import HoMLayer
 
 
 def modulation(x, scale, bias):
-    scale = scale.unsqueeze(1)
-    bias = bias.unsqueeze(1)
     return x * (1+scale) + bias
 
 class AttentionModule(nn.Module):
@@ -56,15 +54,14 @@ class DiTBlock(nn.Module):
         self.mha = nn.MultiheadAttention(dim, num_heads=n_heads)
         self.ffw_ln = nn.LayerNorm(dim)
         self.ffw = nn.Sequential(nn.LayerNorm(dim),
-                                 nn.Linear(dim, 4 * dim),
+                                 nn.Linear(dim, 4 * dim, bias=True),
                                  nn.GELU(),
                                  nn.LayerNorm(4 * dim),
-                                 nn.Linear(4 * dim, dim))
-        self.cond_mlp = nn.Sequential(nn.LayerNorm(dim),
-                                 nn.Linear(dim, 4 * dim),
+                                 nn.Linear(4 * dim, dim, bias=True))
+        self.cond_mlp = nn.Sequential(
                                  nn.GELU(),
-                                 nn.LayerNorm(4 * dim),
-                                 nn.Linear(4 * dim, 6))
+                                 nn.LayerNorm(dim),
+                                 nn.Linear(dim, 6 * dim, bias=True))
 
     def init_modulation_(self, m):
         if isinstance(m, nn.Linear):
@@ -76,11 +73,11 @@ class DiTBlock(nn.Module):
         g1, s1, b1, g2, s2, b2 = self.cond_mlp(c+t).chunk(6, -1)
 
         # mha
-        x_ln = modulation(self.mha_ln(x), s1, b1)
+        x_ln = modulation(self.mha_ln(x), s1.unsqueeze(1), b1.unsqueeze(1))
         x = x + self.mha(x_ln, x_ln, x_ln)[0]*g1.unsqueeze(1)
 
         #ffw
-        x_ln = modulation(self.ffw_ln(x), s2, b2)
+        x_ln = modulation(self.ffw_ln(x), s2.unsqueeze(1), b2.unsqueeze(1))
         x = x + self.ffw(x_ln)*g2.unsqueeze(1)
 
         return x
@@ -115,11 +112,15 @@ class ClassConditionalDiT(nn.Module):
         self.n_patches = (im_size // kernel_size)
         self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)))
 
-        self.in_conv = nn.Conv2d(3, dim, kernel_size=kernel_size, stride=kernel_size)
+        self.in_conv = nn.Conv2d(3, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
         self.layers = nn.ModuleList(
             [DiTBlock(dim, n_classes, order, n_timesteps) for i in range(n_layers)])
         self.out_ln = nn.LayerNorm(dim)
-        self.outproj = nn.Linear(dim, kernel_size * kernel_size * 3)
+        self.out_proj = nn.Linear(dim, kernel_size * kernel_size * 3, bias=True)
+        self.out_mod = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(dim, 2 * dim, bias=True)
+        )
 
         # init
         nn.init.trunc_normal_(
@@ -134,7 +135,7 @@ class ClassConditionalDiT(nn.Module):
         self.apply(self.init_weights_)
         for l in self.layers:
             l.apply(l.init_modulation_)
-        nn.init.zeros_(self.outproj.weight)
+        nn.init.zeros_(self.out_proj.weight)
 
     def init_weights_(self, m):
         if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
@@ -163,7 +164,8 @@ class ClassConditionalDiT(nn.Module):
             x = self.layers[l](x, c, t)
 
         # depatchify
-        out = self.outproj(self.out_ln(x))
+        s, b = self.out_mod(x).chunk(2, dim=-1)
+        out = self.out_proj(modulation(self.out_ln(x), s, b))
         out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
                                h=self.n_patches, k=self.kernel_size, c=3)
 
