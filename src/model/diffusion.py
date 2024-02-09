@@ -53,9 +53,12 @@ class DiffusionModule(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         img, label = batch
+        img = img[0:8, ...]
+        label = label[0:8, ...]
         b, c, h, w = img.shape
         #sample time, noise, make noisy
-        time = torch.rand(b).to(img.device)
+        # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
+        time = torch.rand(b).to(img.device)/b + torch.arange(0, b).to(img.device)/b
         eps = torch.randn_like(img)
         img = torch.sqrt(1-time).reshape(b, 1, 1, 1) * img + torch.sqrt(time).reshape(b, 1, 1, 1) * eps
         self.logger.log_image(
