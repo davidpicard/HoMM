@@ -1,8 +1,10 @@
-
+import numpy as np
 import pytorch_lightning as L
 import torch
 import torch.nn as nn
 from torchvision.transforms import transforms
+
+from .sampler.sampler import SigmoidScheduler
 
 denormalize = transforms.Normalize(
     mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
@@ -28,6 +30,14 @@ class DiffusionModule(L.LightningModule):
         # self.train_batch_preprocess = train_batch_preprocess
         self.val_sampler = val_sampler
 
+        # noise scheduler
+        self.scheduler = SigmoidScheduler()
+        # betas = np.linspace(0.0004, 0.08, model.n_timesteps)
+        # alphas = torch.from_numpy(1.0 - betas).float()
+        # self.alphas_cumprod = np.cumprod(alphas, axis=0)
+        # self.sqrt_alphas_cumprod = np.sqrt(self.alphas_cumprod)
+        # self.sqrt_one_minus_alphas_cumprod = np.sqrt(1.0 - self.alphas_cumprod)
+
     def training_step(self, batch, batch_idx):
         img, label = batch
         b, c, h, w = img.shape
@@ -39,9 +49,12 @@ class DiffusionModule(L.LightningModule):
 
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
-        time = torch.rand(b).to(img.device)/b + torch.arange(0, b).to(img.device)/b
+        # time = torch.randint(0, self.model.n_timesteps//b, (b,)).to(img.device) + torch.arange(0, b).to(img.device)*self.model.n_timesteps//b
+        time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
         eps = torch.randn_like(img)
         img = torch.sqrt(1-time).reshape(b, 1, 1, 1) * img + torch.sqrt(time).reshape(b, 1, 1, 1) * eps
+        # img = self.sqrt_one_minus_alphas_cumprod.to(img.device)[time].reshape(b, 1, 1, 1) * img + self.sqrt_alphas_cumprod.to(img.device)[time].reshape(b, 1, 1, 1) * eps
+        # time = time / self.model.n_timesteps
 
         pred = self.model(img, label, time)
         loss = self.loss(pred, eps, average=True)
