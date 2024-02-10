@@ -1,4 +1,5 @@
 import einops
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -105,7 +106,11 @@ class ClassConditionalDiT(nn.Module):
         self.dropout = dropout
 
         self.classes_emb = nn.Embedding(n_classes + 1, dim)
-        self.time_emb = nn.Embedding(n_timesteps + 1, dim)
+        self.freqs = nn.Parameter(torch.exp(-2 * np.log(n_timesteps) * torch.arange(0, dim//2) / dim), requires_grad=False)
+        self.time_emb = nn.Sequential(nn.Linear(dim, 4*dim),
+                                      nn.SiLU(),
+                                      nn.Linear(4*dim, dim)
+                                      )
 
         self.n_patches = (im_size // kernel_size)
         self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)))
@@ -139,9 +144,6 @@ class ClassConditionalDiT(nn.Module):
                 nn.init.zeros_(m.bias)
 
     def forward(self, img, cls, time):
-        # quantize time
-        time = time * self.n_timesteps
-        tq = torch.clamp(time.floor().long(), 0, self.n_timesteps)
 
         # patchify
         x = self.in_conv(img)
@@ -149,9 +151,12 @@ class ClassConditionalDiT(nn.Module):
         b, n, d = x.shape
         x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
 
+        # embed time
+        time = torch.einsum("b, n -> bn", time, self.freqs)
+        t = torch.cat([time.cos(), time.sin()], dim=1)
+        t = self.time_emb(t)
         # cond
-        c = self.classes_emb(cls.argmax(dim=1))
-        t = self.time_emb(tq)
+        c = self.classes_emb(cls)
         c = c+t
 
         # forward pass

@@ -32,6 +32,11 @@ class DiffusionModule(L.LightningModule):
         img, label = batch
         b, c, h, w = img.shape
 
+        # drop labels
+        label = label.argmax(dim=1)
+        drop = torch.rand(b, device=label.device) < 0.1
+        label = torch.where(drop, self.model.n_classes, label)
+
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
         time = torch.rand(b).to(img.device)/b + torch.arange(0, b).to(img.device)/b
@@ -54,7 +59,7 @@ class DiffusionModule(L.LightningModule):
     def validation_step(self, batch, batch_idx):
         img, label = batch
         img = img[0:8, ...]
-        label = label[0:8, ...]
+        label = label[0:8, ...].argmax(dim=1)
         b, c, h, w = img.shape
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
@@ -92,14 +97,14 @@ class DiffusionModule(L.LightningModule):
         # sample images
         noise = torch.randn_like(img)
         label = torch.zeros_like(label)
-        label[0, 1] = 1 # goldfish
-        label[1, 9] = 1 # ostrich
-        label[2, 18] = 1 # magpie
-        label[3, 249] = 1 # malamut
-        label[4, 928] = 1 # ice cream
-        label[5, 949] = 1 # strawberry
-        label[6, 888] = 1 # viaduc
-        label[7, 409] = 1 # analog clock
+        label[0] = 1 # goldfish
+        label[1] = 9 # ostrich
+        label[2] = 18 # magpie
+        label[3] = 249 # malamut
+        label[4] = 928 # ice cream
+        label[5] = 949 # strawberry
+        label[6] = 888 # viaduc
+        label[7] = 409 # analog clock
         samples = self.val_sampler.sample(noise, self.model, label)
         samples = denormalize(samples)
         self.logger.log_image(

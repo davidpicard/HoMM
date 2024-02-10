@@ -3,7 +3,7 @@ defaults:
   - network: clsdiff
   - loss: MSE
   - optimizer: adam
-  - lr_scheduler: warmup_cosine_decay
+  - lr_scheduler: warmup
   - sampler: ddim
 
 name: HoMMClsDiff
