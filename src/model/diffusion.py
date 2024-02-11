@@ -4,11 +4,11 @@ import torch
 import torch.nn as nn
 from torchvision.transforms import transforms
 
-from .sampler.sampler import SigmoidScheduler
+from .sampler.sampler import DiTPipeline, DDIMLinearScheduler
 
 denormalize = transforms.Normalize(
-    mean=[-0.485 / 0.229, -0.456 / 0.224, -0.406 / 0.225],
-    std=[1.0 / 0.229, 1.0 / 0.224, 1.0 / 0.225],
+    mean=[-1],
+    std=[2.],
 )
 class DiffusionModule(L.LightningModule):
     def __init__(
@@ -31,12 +31,10 @@ class DiffusionModule(L.LightningModule):
         self.val_sampler = val_sampler
 
         # noise scheduler
-        self.scheduler = SigmoidScheduler()
-        # betas = np.linspace(0.0004, 0.08, model.n_timesteps)
-        # alphas = torch.from_numpy(1.0 - betas).float()
-        # self.alphas_cumprod = np.cumprod(alphas, axis=0)
-        # self.sqrt_alphas_cumprod = np.sqrt(self.alphas_cumprod)
-        # self.sqrt_one_minus_alphas_cumprod = np.sqrt(1.0 - self.alphas_cumprod)
+        self.n_timesteps = model.n_timesteps
+        # self.scheduler = DDIMScheduler(num_train_timesteps=self.n_timesteps)
+        self.scheduler = DDIMLinearScheduler(n_timesteps=self.n_timesteps)
+        self.pipeline = DiTPipeline(model=model, scheduler=self.scheduler)
 
     def training_step(self, batch, batch_idx):
         img, label = batch
@@ -49,15 +47,14 @@ class DiffusionModule(L.LightningModule):
 
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
-        # time = torch.randint(0, self.model.n_timesteps//b, (b,)).to(img.device) + torch.arange(0, b).to(img.device)*self.model.n_timesteps//b
-        time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
+        # time = torch.linspace(0, (b-1)/b, b) + torch.rand(b)/b
+        # time = (time*self.n_timesteps).to(img.device)
+        time = torch.randint(0, self.n_timesteps, (b,)).to(img.device)
         eps = torch.randn_like(img)
-        img = torch.sqrt(1-time).reshape(b, 1, 1, 1) * img + torch.sqrt(time).reshape(b, 1, 1, 1) * eps
-        # img = self.sqrt_one_minus_alphas_cumprod.to(img.device)[time].reshape(b, 1, 1, 1) * img + self.sqrt_alphas_cumprod.to(img.device)[time].reshape(b, 1, 1, 1) * eps
-        # time = time / self.model.n_timesteps
+        img = self.scheduler.add_noise(img, eps, time)
 
-        pred = self.model(img, label, time)
-        loss = self.loss(pred, eps, average=True)
+        pred = self.model(img, time, label)
+        loss = {"loss": ((pred - eps)**2).mean()}
         for metric_name, metric_value in loss.items():
             self.log(
                 f"train/{metric_name}",
@@ -76,15 +73,16 @@ class DiffusionModule(L.LightningModule):
         b, c, h, w = img.shape
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
-        time = torch.rand(b).to(img.device)/b + torch.arange(0, b).to(img.device)/b
+        time = torch.linspace(0, self.n_timesteps, b).to(img.device)
+        # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
         eps = torch.randn_like(img)
-        img = torch.sqrt(1-time).reshape(b, 1, 1, 1) * img + torch.sqrt(time).reshape(b, 1, 1, 1) * eps
+        img = self.scheduler.add_noise(img, eps, time)
         self.logger.log_image(
             key="image_input",
             images=[img[0], img[1], img[2], img[3],
                     img[4], img[5], img[6], img[7]]
         )
-        pred = self.model(img, label, time)
+        pred = self.model(img, time, label)
         loss = self.loss(pred, eps, average=True)
         for metric_name, metric_value in loss.items():
             self.log(
@@ -99,8 +97,8 @@ class DiffusionModule(L.LightningModule):
             images=[pred[0], pred[1], pred[2], pred[3],
                     pred[4], pred[5], pred[6], pred[7]]
         )
-        x_0 = (img - torch.sqrt(time).reshape(b, 1, 1, 1) * pred) / torch.sqrt(1 - time).reshape(b, 1, 1, 1)
-        x_0 = torch.clamp(x_0, -1., 1)
+        self.scheduler.set_timesteps(self.n_timesteps)
+        _, x_0 = self.scheduler.step(pred, time, img)
         self.logger.log_image(
             key="image_predictions",
             images=[x_0[0], x_0[1], x_0[2], x_0[3],
@@ -108,7 +106,6 @@ class DiffusionModule(L.LightningModule):
         )
 
         # sample images
-        noise = torch.randn_like(img)
         label = torch.zeros_like(label)
         label[0] = 1 # goldfish
         label[1] = 9 # ostrich
@@ -118,8 +115,11 @@ class DiffusionModule(L.LightningModule):
         label[5] = 949 # strawberry
         label[6] = 888 # viaduc
         label[7] = 409 # analog clock
-        samples = self.val_sampler.sample(noise, self.model, label)
-        samples = denormalize(samples)
+        samples = self.pipeline(
+            label,
+            num_inference_steps=50,
+            device=img.device
+        )
         self.logger.log_image(
             key="samples",
             images=[samples[0], samples[1], samples[2], samples[3],

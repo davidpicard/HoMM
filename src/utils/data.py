@@ -15,7 +15,7 @@ denormalize = transforms.Normalize(
 )
 
 
-def build_imagenet(data_dir, num_classes, size=224, additional_transforms=None, val_scale_ratio=0.8):
+def build_imagenet(data_dir, num_classes, size=224, additional_transforms=None, val_scale_ratio=1.0):
     tr = [
         # transforms.RandomResizedCrop(size),
         transforms.Resize(int(size / val_scale_ratio)),
