@@ -19,10 +19,10 @@ class HoM(nn.Module):
             xc = xq # self attention
 
         # high order
-        h = self.ho_proj(xc)
+        h = F.gelu(self.ho_proj(xc))
         h = list(h.chunk(self.order, dim=-1))
         for i in range(1, self.order):
-            h[i] = h[i] * F.tanh(h[i-1])
+            h[i] = h[i] * h[i-1]
         h = torch.cat(h, dim=-1)
         # averaging
         if mask is None:
