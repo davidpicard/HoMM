@@ -1,0 +1,10 @@
+_target_: model.network.imagediffusion.ClassConditionalDiT
+n_classes: ${data.num_classes}
+n_timesteps: 250
+dim: 256
+im_size: ${data.size}
+kernel_size: 8
+n_layers: 8
+n_heads: 4
+ffw_expand: 4
+dropout: 0.0

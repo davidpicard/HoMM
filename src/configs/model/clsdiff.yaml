@@ -1,6 +1,6 @@
 defaults:
   - train_batch_preprocess: null
-  - network: clsdiff
+  - network: dit
   - loss: MSE
   - optimizer: adam
   - lr_scheduler: warmup
