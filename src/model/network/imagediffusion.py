@@ -223,12 +223,12 @@ class DiHBlock(nn.Module):
         g1, g2 = self.gate_mlp(c).chunk(2, -1)
 
         # mha
-        x_ln = modulation(self.mha_ln(x), s1.unsqueeze(1), b1.unsqueeze(1))
-        x = x + self.hom(x_ln)*(1+g1.unsqueeze(1))
+        x_ln = modulation(self.mha_ln(x), s1, b1)
+        x = x + self.hom(x_ln)*(1+g1)
 
         #ffw
-        x_ln = modulation(self.ffw_ln(x), s2.unsqueeze(1), b2.unsqueeze(1))
-        x = x + self.ffw(x_ln)*(1+g2.unsqueeze(1))
+        x_ln = modulation(self.ffw_ln(x), s2, b2)
+        x = x + self.ffw(x_ln)*(1+g2)
 
         return x
 
@@ -321,12 +321,14 @@ class ClassConditionalDiH(nn.Module):
         # cond
         c = self.classes_emb(cls)
         c = c+t
+        # add pos to cond
+        c = c.unsqueeze(1) + self.pos_emb
 
         # forward pass
         for l in range(self.n_layers):
             x = self.layers[l](x, c)
         s, b = self.out_mod(c).chunk(2, dim=-1)
-        out = modulation(self.out_ln(x), s.unsqueeze(1), b.unsqueeze(1))
+        out = modulation(self.out_ln(x), s, b)
         out = self.out_proj(out)
 
         # depatchify

@@ -20,8 +20,13 @@ class DiffusionModule(L.LightningModule):
             lr_scheduler_builder,
             # train_batch_preprocess,
             val_sampler,
+            torch_compile=False
         ):
         super().__init__()
+        # do optim
+        if torch_compile:
+            print("compiling model")
+            model = torch.compile(model, mode="max-autotune-no-cudagraphs")
         self.model = model
         self.mode = mode
         self.loss = loss
