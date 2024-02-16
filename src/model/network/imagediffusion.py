@@ -21,7 +21,7 @@ class DiTBlock(nn.Module):
         self.mha = Attention(dim, num_heads=n_heads, qkv_bias=True)
         self.ffw_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.ffw = nn.Sequential(nn.Linear(dim, 4 * dim, bias=True),
-                                 nn.GELU(approximate="tanh"),
+                                 nn.GELU(),
                                  nn.Linear(4 * dim, dim, bias=True))
         self.cond_mlp = nn.Sequential(
                                  nn.SiLU(),
@@ -37,16 +37,17 @@ class DiTBlock(nn.Module):
 
         # mha
         x_ln = modulation(self.mha_ln(x), s1.unsqueeze(1), b1.unsqueeze(1))
-        x = x + self.mha(x_ln)*(1+g1.unsqueeze(1))
+        x = x + self.mha(x_ln)*(g1.unsqueeze(1))
 
         #ffw
         x_ln = modulation(self.ffw_ln(x), s2.unsqueeze(1), b2.unsqueeze(1))
-        x = x + self.ffw(x_ln)*(1+g2.unsqueeze(1))
+        x = x + self.ffw(x_ln)*(g2.unsqueeze(1))
 
         return x
 
 class ClassConditionalDiT(nn.Module):
     def __init__(self,
+                 input_dim: int,
                  n_classes: int,
                  n_timesteps: int,
                  im_size: int,
@@ -57,6 +58,7 @@ class ClassConditionalDiT(nn.Module):
                  ffw_expand=4,
                  dropout=0.):
         super().__init__()
+        self.input_dim = input_dim
         self.n_classes = n_classes
         self.n_timesteps = n_timesteps
         self.im_size = im_size
@@ -78,11 +80,11 @@ class ClassConditionalDiT(nn.Module):
         self.in_channels = 3
         self.sample_size = (self.n_patches, self.n_patches)
         self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)), requires_grad=False)
-        self.in_conv = nn.Conv2d(3, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
+        self.in_conv = nn.Conv2d(input_dim, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
         self.layers = nn.ModuleList(
             [DiTBlock(dim, n_heads) for _ in range(n_layers)])
         self.out_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
-        self.out_proj = nn.Linear(dim, kernel_size * kernel_size * 3, bias=True)
+        self.out_proj = nn.Linear(dim, kernel_size * kernel_size * input_dim, bias=True)
         self.out_mod = nn.Sequential(
             nn.SiLU(),
             nn.Linear(dim, 2 * dim, bias=True)
@@ -103,7 +105,7 @@ class ClassConditionalDiT(nn.Module):
             nn.init.zeros_(m.bias)
             m = l.gate_mlp[-1]
             nn.init.zeros_(m.weight)
-            nn.init.constant_(m.bias, -1.)
+            nn.init.constant_(m.bias, 0.)
         #pos emb
         pos_emb = get_2d_sincos_pos_embed(self.pos_emb.shape[-1], self.n_patches)
         self.pos_emb.data.copy_(torch.from_numpy(pos_emb).float().unsqueeze(0))
@@ -142,7 +144,7 @@ class ClassConditionalDiT(nn.Module):
 
         # depatchify
         out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
-                               h=self.n_patches, k=self.kernel_size, c=3)
+                               h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
 
         return out
 
@@ -234,6 +236,7 @@ class DiHBlock(nn.Module):
 
 class ClassConditionalDiH(nn.Module):
     def __init__(self,
+                 input_dim: int,
                  n_classes: int,
                  n_timesteps: int,
                  im_size: int,
@@ -245,6 +248,7 @@ class ClassConditionalDiH(nn.Module):
                  ffw_expand=4,
                  dropout=0.):
         super().__init__()
+        self.input_dim = input_dim
         self.n_classes = n_classes
         self.n_timesteps = n_timesteps
         self.im_size = im_size
@@ -264,14 +268,14 @@ class ClassConditionalDiH(nn.Module):
                                       )
         self.n_patches = (im_size // kernel_size)
         # for diffusers
-        self.in_channels = 3
+        self.in_channels = input_dim
         self.sample_size = (self.n_patches, self.n_patches)
         self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)), requires_grad=False)
-        self.in_conv = nn.Conv2d(3, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
+        self.in_conv = nn.Conv2d(input_dim, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
         self.layers = nn.ModuleList(
             [DiHBlock(dim=dim, order=order, order_expand=order_expand, ffw_expand=ffw_expand) for _ in range(n_layers)])
         self.out_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
-        self.out_proj = nn.Linear(dim, kernel_size * kernel_size * 3, bias=True)
+        self.out_proj = nn.Linear(dim, kernel_size * kernel_size * input_dim, bias=True)
         self.out_mod = nn.Sequential(
             nn.SiLU(),
             nn.Linear(dim, 2 * dim, bias=True)
@@ -333,7 +337,7 @@ class ClassConditionalDiH(nn.Module):
 
         # depatchify
         out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
-                               h=self.n_patches, k=self.kernel_size, c=3)
+                               h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
 
         return out
 

@@ -1,6 +1,7 @@
 _target_: model.network.imagediffusion.ClassConditionalDiH
 n_classes: ${data.num_classes}
 n_timesteps: 250
+input_dim: 3
 dim: 256
 im_size: ${data.size}
 kernel_size: 8

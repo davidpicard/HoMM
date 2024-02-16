@@ -40,10 +40,12 @@ class SigmoidScheduler:
 class DDIMLinearScheduler():
     def __init__(self,
                  n_timesteps,
-                 schedule = linear_schedule):
+                 schedule = linear_schedule,
+                 clip_img_pred=False):
         self.train_timesteps = n_timesteps
         self.timesteps = None
         self.schedule = schedule
+        self.clip_img_pred = clip_img_pred
 
     def add_noise(self, x, noise, t):
         t = torch.clamp(t, 0, self.train_timesteps)
@@ -60,7 +62,8 @@ class DDIMLinearScheduler():
         # pred x0
         sigma = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
         x_0 = (samples - torch.sqrt(sigma) * noise_pred) / torch.sqrt(1 - sigma)
-        x_0 = x_0.clamp(-1, 1)
+        if self.clip_img_pred:
+            x_0 = x_0.clamp(-1, 1)
         # recompute sample at previous step
         t = t - self.train_timesteps/self.num_inference_steps
         sigma = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
@@ -82,19 +85,16 @@ class DiTPipeline():
     @torch.no_grad()
     def __call__(
         self,
+        samples,
         class_labels,
         device,
         num_inference_steps: int = 50,
-        step_callback=None
+        step_callback=None,
     ):
 
         batch_size = len(class_labels)
         im_size = self.model.im_size
 
-        samples = torch.randn(
-            size=(batch_size, 3, im_size, im_size),
-            device=device
-        )
         class_labels = class_labels.to(device)
 
         # set step values
@@ -110,5 +110,5 @@ class DiTPipeline():
             if step_callback is not None:
                 step_callback(t, samples, x_0, noise_pred)
 
-        samples = (samples / 2 + 0.5).clamp(0, 1)
+        # samples = (samples / 2 + 0.5).clamp(0, 1)
         return samples
