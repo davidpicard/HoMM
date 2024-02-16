@@ -33,6 +33,7 @@ root_dir:  ${hydra:runtime.cwd}
 checkpoint_dir: ${root_dir}/checkpoints
 experiment_name_suffix: base
 experiment_name: ${data.name}_${model.name}_${experiment_name_suffix}
+load_weight_from_checkpoint: null
 
 hydra:
   run:

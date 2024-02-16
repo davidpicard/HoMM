@@ -210,7 +210,7 @@ class DiHBlock(nn.Module):
         self.hom = HoM(dim, order=order, order_expand=order_expand, bias=True)
         self.ffw_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand * dim, bias=True),
-                                 nn.GELU(approximate="tanh"),
+                                 nn.GELU(),
                                  nn.Linear(ffw_expand * dim, dim, bias=True))
         self.cond_mlp = nn.Sequential(
                                  nn.SiLU(),

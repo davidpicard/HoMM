@@ -66,6 +66,18 @@ def train(cfg):
         logger=logger,
         callbacks=callbacks,
     )
+
+    #load weights
+    if cfg.load_weight_from_checkpoint is not None:
+        sd = torch.load(cfg.load_weight_from_checkpoint)
+        state_dict = sd['state_dict']
+        module_state_dict = {}
+        for key, value in state_dict.items():
+            if key.startswith('model.'):
+                new_key = key[len('model.'):]
+                module_state_dict[new_key] = value
+        model.load_state_dict(module_state_dict)
+
     # Resume experiments if last.ckpt exists for this experiment
     ckpt_path = None
 
