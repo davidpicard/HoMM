@@ -179,10 +179,6 @@ class DiffusionModule(L.LightningModule):
                      "ice cream", "strawberry", "viaduc", "analog clock"]
         )
 
-    def on_save_checkpoint(self, checkpoint):
-        if self.latent_vae:
-            # Remove vae
-            del checkpoint['vae']
 
     def configure_optimizers(self):
         if self.optimizer_cfg.exclude_ln_and_biases_from_weight_decay:
