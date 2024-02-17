@@ -69,11 +69,15 @@ def train(cfg):
 
     #load weights
     if cfg.load_weight_from_checkpoint is not None:
+        print('loading weights from {}'.format(cfg.load_weight_from_checkpoint))
         sd = torch.load(cfg.load_weight_from_checkpoint)
         state_dict = sd['state_dict']
         module_state_dict = {}
         for key, value in state_dict.items():
-            if key.startswith('model.'):
+            if key.startswith('model._orig_mod.'):
+                new_key = key[len('model._orig_mod.'):]
+                module_state_dict[new_key] = value
+            elif key.startswith('model.'):
                 new_key = key[len('model.'):]
                 module_state_dict[new_key] = value
         model.load_state_dict(module_state_dict)
