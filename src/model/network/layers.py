@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-@torch.compile(mode="max-autotune-no-cudagraphs")
+@torch.compile(mode="max-autotune")
 def high_order_aggregation_(x: torch.Tensor, k: int, mask=None):
         h = list(F.gelu(x).chunk(k, dim=-1))
         for i in range(1, k):

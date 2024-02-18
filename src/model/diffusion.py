@@ -62,7 +62,7 @@ class DiffusionModule(L.LightningModule):
             # x = x / 0.5 * torch.tensor([[4.17, 4.62, 3.71, 3.28]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
             # x = x + torch.tensor([[5.81, 3.25, 0.12, -2.15]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
             x = self.vae.decode(x).sample
-            x = (x / 2 + 0.5).clamp(-1, 1)
+            x = (x.clamp(-1, 1) / 2 + 0.5)
         return x
 
 

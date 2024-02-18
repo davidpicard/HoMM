@@ -112,3 +112,32 @@ class DiTPipeline():
 
         # samples = (samples / 2 + 0.5).clamp(0, 1)
         return samples
+
+    @torch.no_grad()
+    def sample_cfg(self, samples, class_labels, cfg, device, num_inference_steps: int = 50, step_callback = None):
+        batch_size = len(class_labels)
+        class_labels = class_labels.to(device)
+
+        # set step values
+        self.scheduler.set_timesteps(num_inference_steps)
+        for t in (self.scheduler.timesteps):
+            timesteps = t
+            # broadcast to batch dimension in a way that's compatible with ONNX/Core ML
+            timesteps = timesteps.expand(batch_size).to(device)
+            # duplicate all
+            x_input = torch.cat([samples, samples], dim=0).to(device)
+            t_input = torch.cat([timesteps, timesteps], dim=0).to(device)
+            c_input = torch.cat([class_labels, class_labels], dim=0).to(device)
+            c_input[batch_size:] = 1000
+            # predict noise model_output
+            noise_pred = self.model(x_input, time=t_input, cls=c_input)
+            eps_c = noise_pred[0:batch_size, ...]
+            eps_u = noise_pred[batch_size:, ...]
+            eps = eps_c + cfg*(eps_c - eps_u)
+            # compute previous image: x_t -> x_t-1
+            samples, x_0 = self.scheduler.step(eps, timesteps, samples)
+            if step_callback is not None:
+                step_callback(t, samples, x_0, noise_pred)
+
+        # samples = (samples / 2 + 0.5).clamp(0, 1)
+        return samples

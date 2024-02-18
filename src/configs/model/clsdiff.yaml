@@ -16,5 +16,5 @@ instance:
   optimizer_cfg: ${model.optimizer}
   lr_scheduler_builder: ${model.lr_scheduler}
   torch_compile: false
-  latent_vae: false
+  latent_vae: true
 

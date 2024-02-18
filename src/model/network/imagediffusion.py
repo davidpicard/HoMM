@@ -246,7 +246,8 @@ class ClassConditionalDiH(nn.Module):
                  order=2,
                  order_expand=4,
                  ffw_expand=4,
-                 dropout=0.):
+                 dropout=0.,
+                 learnable_pos_emb=False):
         super().__init__()
         self.input_dim = input_dim
         self.n_classes = n_classes
@@ -259,6 +260,7 @@ class ClassConditionalDiH(nn.Module):
         self.order_expand = order_expand
         self.ffw_expand = ffw_expand
         self.dropout = dropout
+        self.learnable_pos_emb = learnable_pos_emb
 
         self.classes_emb = nn.Embedding(n_classes + 1, dim)
         self.freqs = nn.Parameter(torch.exp(-2 * np.log(n_timesteps) * torch.arange(0, dim//2) / dim), requires_grad=False)
@@ -298,8 +300,13 @@ class ClassConditionalDiH(nn.Module):
             nn.init.zeros_(m.weight)
             nn.init.constant_(m.bias, -1.)
         #pos emb
-        pos_emb = get_2d_sincos_pos_embed(self.pos_emb.shape[-1], self.n_patches)
-        self.pos_emb.data.copy_(torch.from_numpy(pos_emb).float().unsqueeze(0))
+        if self.learnable_pos_emb:
+            print('using learnable positional embedding')
+            self.pos_emb.requires_grad = True
+            nn.init.trunc_normal_(self.pos_emb, 0., 0.02)
+        else:
+            pos_emb = get_2d_sincos_pos_embed(self.pos_emb.shape[-1], self.n_patches)
+            self.pos_emb.data.copy_(torch.from_numpy(pos_emb).float().unsqueeze(0))
         # patch and time emb
         nn.init.normal_(self.classes_emb.weight, std=0.02)
         nn.init.normal_(self.time_emb[0].weight, std=0.02)
@@ -326,7 +333,7 @@ class ClassConditionalDiH(nn.Module):
         c = self.classes_emb(cls)
         c = c+t
         # add pos to cond
-        c = c.unsqueeze(1) + self.pos_emb
+        c = c.unsqueeze(1) #+ self.pos_emb
 
         # forward pass
         for l in range(self.n_layers):
@@ -340,6 +347,14 @@ class ClassConditionalDiH(nn.Module):
                                h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
 
         return out
+
+def DiH_S_2(**kwargs):
+    return ClassConditionalDiH(n_layers=12, dim=384, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+def DiH_S_4(**kwargs):
+    return ClassConditionalDiH(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
+def DiH_B_2(**kwargs):
+    return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+
 
 
 # https://github.com/facebookresearch/mae/blob/main/util/pos_embed.py
