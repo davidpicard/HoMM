@@ -355,6 +355,12 @@ def DiH_S_4(**kwargs):
 def DiH_B_2(**kwargs):
     return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
 
+DiH_models = {
+#    'DiT-XL/2': DiT_XL_2,  'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
+#    'DiT-L/2':  DiT_L_2,   'DiT-L/4':  DiT_L_4,   'DiT-L/8':  DiT_L_8,
+    'DiH-B/2':  DiH_B_2, #  'DiT-B/4':  DiT_B_4,   'DiT-B/8':  DiT_B_8,
+    'DiH-S/2':  DiH_S_2,   'DiH-S/4':  DiH_S_4,  # 'DiT-S/8':  DiT_S_8,
+}
 
 
 # https://github.com/facebookresearch/mae/blob/main/util/pos_embed.py
