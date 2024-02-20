@@ -5,6 +5,7 @@ defaults:
   - optimizer: adamw
   - lr_scheduler: warmup_cosine_decay
   - sampler: ddim
+  - ema: constant
 
 name: HoMMClsDiff
 instance:
@@ -17,4 +18,5 @@ instance:
   lr_scheduler_builder: ${model.lr_scheduler}
   torch_compile: false
   latent_vae: true
+  ema_cfg: ${model.ema}
 

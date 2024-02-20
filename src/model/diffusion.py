@@ -22,7 +22,8 @@ class DiffusionModule(L.LightningModule):
             # train_batch_preprocess,
             val_sampler,
             torch_compile=False,
-            latent_vae=False
+            latent_vae=False,
+            ema_cfg=None
         ):
         super().__init__()
         # do optim
@@ -43,10 +44,24 @@ class DiffusionModule(L.LightningModule):
             for p in self.vae.parameters():
                 p.requires_grad = False
 
+        #ema
+        if ema_cfg is not None:
+            from ema_pytorch import EMA
+            self.ema_cfg = ema_cfg
+            self.ema = EMA(
+                model,
+                beta = ema_cfg.beta,
+                update_after_step= ema_cfg.update_after_step,
+                update_every= ema_cfg.update_every
+            )
+
         # noise scheduler
         self.n_timesteps = model.n_timesteps
         self.scheduler = DDIMLinearScheduler(n_timesteps=self.n_timesteps)
-        self.pipeline = DiTPipeline(model=model, scheduler=self.scheduler)
+        if ema_cfg is not None:
+            self.pipeline = DiTPipeline(model=self.ema.ema_model, scheduler=self.scheduler)
+        else:
+            self.pipeline = DiTPipeline(model=model, scheduler=self.scheduler)
 
     def vae_encode(self, x):
         if self.latent_vae:
@@ -98,6 +113,11 @@ class DiffusionModule(L.LightningModule):
                 on_epoch=True,
                 prog_bar = True
             )
+
+        #ema
+        if self.ema is not None:
+            self.ema.update()
+
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -163,9 +183,10 @@ class DiffusionModule(L.LightningModule):
         label[6] = 888 # viaduc
         label[7] = 409 # analog clock
         samples = torch.randn_like(img_noisy)
-        samples = self.pipeline(
+        samples = self.pipeline.sample_cfg(
             samples,
             label,
+            cfg=4,
             num_inference_steps=50,
             device=img.device
         )
