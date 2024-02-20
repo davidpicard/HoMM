@@ -38,22 +38,6 @@ class HoM(nn.Module):
 
         # high order
         h = high_order_aggregation_(self.ho_proj(xc), self.order, mask)
-        #old code not optimized through torch.compile
-        # h = F.gelu(self.ho_proj(xc))
-        # h = list(h.chunk(self.order, dim=-1))
-        # for i in range(1, self.order):
-        #     h[i] = h[i] * h[i-1]
-        # h = torch.cat(h, dim=-1)
-        # # averaging
-        # if mask is None:
-        #     h = h.mean(dim=1, keepdims=True)
-        # else:
-        #     if mask.dim()==2:
-        #         h = (h * mask.unsqueeze(-1)).sum(dim=1, keepdims=True)/mask.unsqueeze(-1).sum(dim=1, keepdims=True)
-        #     elif mask.dim() ==3:
-        #         h = torch.einsum(h, mask, 'bnd, bmn -> bmd')/mask.sum(dim=2, keepdims=True) # b batch, n context tokens, m query tokens, d dim
-        #     else:
-        #         raise Exception('unsupported dim for mask (should be 2 or None)')
 
         # selection
         s = F.sigmoid(self.se_proj(xq))
