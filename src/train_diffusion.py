@@ -80,7 +80,7 @@ def train(cfg):
         #     elif key.startswith('model.'):
         #         new_key = key[len('model.'):]
         #         module_state_dict[new_key] = value
-        model.load_state_dict(module_state_dict)
+        model.load_state_dict(module_state_dict, strict=False)
 
     # Resume experiments if last.ckpt exists for this experiment
     ckpt_path = None
