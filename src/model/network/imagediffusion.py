@@ -363,6 +363,130 @@ DiH_models = {
 }
 
 
+
+class ClassConditionalDiHpp(nn.Module):
+    def __init__(self,
+                 input_dim: int,
+                 n_classes: int,
+                 n_timesteps: int,
+                 im_size: int,
+                 kernel_size: int,
+                 dim: int,
+                 n_layers,
+                 order=2,
+                 order_expand=4,
+                 ffw_expand=4,
+                 dropout=0.,
+                 n_registers=32):
+        super().__init__()
+        self.input_dim = input_dim
+        self.n_classes = n_classes
+        self.n_timesteps = n_timesteps
+        self.im_size = im_size
+        self.kernel_size = kernel_size
+        self.dim = dim
+        self.n_layers = n_layers
+        self.order = order
+        self.order_expand = order_expand
+        self.ffw_expand = ffw_expand
+        self.dropout = dropout
+
+        self.classes_emb = nn.Embedding(n_classes + 1, dim)
+        self.freqs = nn.Parameter(torch.exp(-2 * np.log(n_timesteps) * torch.arange(0, dim//2) / dim), requires_grad=False)
+        self.time_emb = nn.Sequential(nn.Linear(dim, 4*dim, bias=True),
+                                      nn.SiLU(),
+                                      nn.Linear(4*dim, dim, bias=True)
+                                      )
+        self.n_patches = (im_size // kernel_size)
+        # for diffusers
+        self.in_channels = input_dim
+        self.sample_size = (self.n_patches, self.n_patches)
+        self.n_registers = n_registers
+        self.registers = nn.Parameter(torch.zeros(1, n_registers, dim), requires_grad=True)
+        self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)), requires_grad=False)
+        self.cond_pos_emb = nn.Parameter(torch.zeros((1, n_registers + self.n_patches ** 2, dim)), requires_grad=False)
+        self.in_conv = nn.Conv2d(input_dim, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
+        self.layers = nn.ModuleList(
+            [DiHBlock(dim=dim, order=order, order_expand=order_expand, ffw_expand=ffw_expand) for _ in range(n_layers)])
+        self.out_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
+        self.out_proj = nn.Linear(dim, kernel_size * kernel_size * input_dim, bias=True)
+        self.out_mod = nn.Sequential(
+            nn.SiLU(),
+            nn.Linear(dim, 2 * dim, bias=True)
+        )
+
+        # init
+        # layers
+        def init_weights_(m):
+            if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+        self.apply(init_weights_)
+        # zeros modulation gates
+        for l in self.layers:
+            m = l.cond_mlp[-1]
+            nn.init.zeros_(m.weight)
+            nn.init.zeros_(m.bias)
+            m = l.gate_mlp[-1]
+            nn.init.zeros_(m.weight)
+            nn.init.constant_(m.bias, -1.)
+        # registers
+        nn.init.trunc_normal_(self.registers, 0., 0.02)
+        #pos emb
+        self.pos_emb.requires_grad = True
+        nn.init.trunc_normal_(self.pos_emb, 0., 0.02)
+        self.cond_pos_emb.requires_grad = True
+        nn.init.trunc_normal_(self.cond_pos_emb, 0., 0.02)
+        # patch and time emb
+        nn.init.normal_(self.classes_emb.weight, std=0.02)
+        nn.init.normal_(self.time_emb[0].weight, std=0.02)
+        nn.init.normal_(self.time_emb[2].weight, std=0.02)
+        # output
+        nn.init.zeros_(self.out_proj.weight)
+        nn.init.zeros_(self.out_proj.bias)
+        nn.init.zeros_(self.out_mod[-1].weight)
+        nn.init.zeros_(self.out_mod[-1].bias)
+
+    def forward(self, img, time, cls):
+
+        # patchify
+        x = self.in_conv(img)
+        x = einops.rearrange(x, 'b d h w -> b (h w) d')
+        b, n, d = x.shape
+        x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
+
+        # add registers
+        r = self.registers.tile((b, 1, 1))
+        x = torch.cat([r, x], dim=1)
+
+        # embed time
+        time = torch.einsum("b, n -> bn", time, self.freqs)
+        t = torch.cat([time.cos(), time.sin()], dim=1)
+        t = self.time_emb(t)
+        # cond
+        c = self.classes_emb(cls)
+        c = c+t
+        # add pos to cond
+        c = c.unsqueeze(1) + self.cond_pos_emb
+
+        # forward pass
+        for l in range(self.n_layers):
+            x = self.layers[l](x, c)
+        # out modulation
+        s, b = self.out_mod(c).chunk(2, dim=-1)
+        out = modulation(self.out_ln(x), s, b)
+        # remove registers
+        out = out[:,self.n_registers:, :]
+        # output proj
+        out = self.out_proj(out)
+
+        # depatchify
+        out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
+                               h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
+
+        return out
+
 # https://github.com/facebookresearch/mae/blob/main/util/pos_embed.py
 def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False, extra_tokens=0):
     """
