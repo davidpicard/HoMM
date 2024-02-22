@@ -10,6 +10,8 @@ from pathlib import Path
 from omegaconf import OmegaConf
 import torch
 
+from callbacks.fix_nans import FixNANinGrad
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 torch.set_float32_matmul_precision("medium")
@@ -51,10 +53,16 @@ def train(cfg):
 
     lr_monitor = LearningRateMonitor()
 
+    fix_nan_callback = FixNANinGrad(
+        monitor=["train/loss"],
+    )
+
+
     callbacks = [
         checkpoint_callback,
         progress_bar,
         lr_monitor,
+        fix_nan_callback,
     ]
 
     logger = hydra.utils.instantiate(cfg.logger)

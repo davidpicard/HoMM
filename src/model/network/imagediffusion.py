@@ -472,7 +472,7 @@ class ClassConditionalDiHpp(nn.Module):
 
         # forward pass
         for l in range(self.n_layers):
-            x = self.layers[l](x, c)
+            x = self.layers[l](x, c).clamp(-255., 255.)
         # out modulation
         s, b = self.out_mod(c).chunk(2, dim=-1)
         out = modulation(self.out_ln(x), s, b)
