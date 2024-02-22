@@ -197,7 +197,7 @@ class DiffusionModule(L.LightningModule):
         label[7] = 409 # analog clock
         gen = torch.Generator()
         gen.manual_seed(3407)
-        samples = torch.randn(img_noisy.shape, gen, dtype=img_noisy.dtype, layout=img_noisy.layout, device=img_noisy.device)
+        samples = torch.randn(size=img_noisy.size(), generator=gen, dtype=img_noisy.dtype, layout=img_noisy.layout, device=img_noisy.device)
         samples = self.pipeline.sample_cfg(
             samples,
             label,
