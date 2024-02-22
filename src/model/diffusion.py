@@ -11,6 +11,33 @@ denormalize = transforms.Normalize(
     mean=[-1],
     std=[2.],
 )
+
+class VAE(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.vae = AutoencoderKL.from_pretrained("runwayml/stable-diffusion-v1-5", device="cuda:0", subfolder="vae",
+                                                 use_safetensors=True)
+        self.vae.eval()
+        for p in self.vae.parameters():
+            p.requires_grad = False
+
+    def vae_encode(self, x):
+        x = self.vae.encode(x).latent_dist.sample()
+        x =  x * self.vae.config.scaling_factor
+        # x = x - torch.tensor([[5.81, 3.25, 0.12, -2.15]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
+        # x = x * 0.5 / torch.tensor([[4.17, 4.62, 3.71, 3.28]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
+        return x
+
+    def vae_decode(self, x):
+        x =  x / self.vae.config.scaling_factor
+        # x = x / 0.5 * torch.tensor([[4.17, 4.62, 3.71, 3.28]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
+        # x = x + torch.tensor([[5.81, 3.25, 0.12, -2.15]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
+        x = self.vae.decode(x).sample
+        x = (x.clamp(-1, 1) / 2 + 0.5)
+        return x
+
+
+
 class DiffusionModule(L.LightningModule):
     def __init__(
             self,
@@ -39,10 +66,7 @@ class DiffusionModule(L.LightningModule):
         self.val_sampler = val_sampler
         self.latent_vae = latent_vae
         if latent_vae:
-            self.vae = AutoencoderKL.from_pretrained("runwayml/stable-diffusion-v1-5", device="cuda:0", subfolder="vae", use_safetensors=True)
-            self.vae.eval()
-            for p in self.vae.parameters():
-                p.requires_grad = False
+            self.vae = VAE()
 
         #ema
         if ema_cfg is not None:
@@ -63,29 +87,18 @@ class DiffusionModule(L.LightningModule):
         else:
             self.pipeline = DiTPipeline(model=model, scheduler=self.scheduler)
 
-    def vae_encode(self, x):
-        if self.latent_vae:
-            x = self.vae.encode(x).latent_dist.sample()
-            x =  x * self.vae.config.scaling_factor
-            # x = x - torch.tensor([[5.81, 3.25, 0.12, -2.15]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-            # x = x * 0.5 / torch.tensor([[4.17, 4.62, 3.71, 3.28]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-        return x
+        # Set to False because we don't load the vae
+        self.strict_loading = False
 
-    def vae_decode(self, x):
-        if self.latent_vae:
-            x =  x / self.vae.config.scaling_factor
-            # x = x / 0.5 * torch.tensor([[4.17, 4.62, 3.71, 3.28]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-            # x = x + torch.tensor([[5.81, 3.25, 0.12, -2.15]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-            x = self.vae.decode(x).sample
-            x = (x.clamp(-1, 1) / 2 + 0.5)
-        return x
-
+    def state_dict(self):
+        # Don't save the encoder, it is not being trained
+        return {k: v for k, v in super().state_dict().items() if "vae" not in k}
 
     def training_step(self, batch, batch_idx):
         img, label = batch
         if self.latent_vae:
             with torch.no_grad():
-                img = self.vae_encode(img)
+                img = self.vae.vae_encode(img)
 
         b, c, h, w = img.shape
 
@@ -127,7 +140,7 @@ class DiffusionModule(L.LightningModule):
 
         if self.latent_vae:
             with torch.no_grad():
-                img = self.vae_encode(img)
+                img = self.vae.vae_encode(img)
                 # img = img * 0.1
 
         b, c, h, w = img.shape
@@ -152,7 +165,7 @@ class DiffusionModule(L.LightningModule):
                 on_epoch=True,
             )
         if self.latent_vae:
-            img = self.vae_decode(img_noisy).detach()
+            img = self.vae.vae_decode(img_noisy).detach()
         self.logger.log_image(
             key="image_input",
             images=[img[0], img[1], img[2], img[3],
@@ -165,7 +178,7 @@ class DiffusionModule(L.LightningModule):
                         pred[4], pred[5], pred[6], pred[7]]
             )
         if self.latent_vae:
-            x_0 = self.vae_decode(x_0).detach()
+            x_0 = self.vae.vae_decode(x_0).detach()
         self.logger.log_image(
             key="image_predictions",
             images=[x_0[0], x_0[1], x_0[2], x_0[3],
@@ -182,7 +195,9 @@ class DiffusionModule(L.LightningModule):
         label[5] = 949 # strawberry
         label[6] = 888 # viaduc
         label[7] = 409 # analog clock
-        samples = torch.randn_like(img_noisy)
+        gen = torch.Generator()
+        gen.manual_seed(3407)
+        samples = torch.randn(img_noisy.shape, gen, dtype=img_noisy.dtype, layout=img_noisy.layout, device=img_noisy.device)
         samples = self.pipeline.sample_cfg(
             samples,
             label,
@@ -191,7 +206,7 @@ class DiffusionModule(L.LightningModule):
             device=img.device
         )
         if self.latent_vae:
-            samples = self.vae_decode(samples).detach()
+            samples = self.vae.vae_decode(samples).detach()
         self.logger.log_image(
             key="samples",
             images=[samples[0], samples[1], samples[2], samples[3],
