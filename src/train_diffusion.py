@@ -2,8 +2,8 @@ import hydra
 import shutil
 import os
 
-from pytorch_lightning.callbacks import LearningRateMonitor
-from pytorch_lightning import seed_everything
+from lightning.pytorch.callbacks import LearningRateMonitor
+from lightning.pytorch import seed_everything
 
 from pathlib import Path
 
