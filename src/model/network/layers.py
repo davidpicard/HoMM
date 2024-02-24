@@ -31,7 +31,7 @@ class HoM(nn.Module):
         self.se_proj = nn.Linear(dim, order*order_expand*dim, bias=bias)
         self.ag_proj = nn.Linear(order*order_expand*dim, dim, bias=bias)
 
-        self.high_order_aggregation_ = torch.compile(high_order_aggregation_, fullgraph=False)
+        self.high_order_aggregation_ = torch.compile(high_order_aggregation_, mode="max-autotune", fullgraph=False)
 
     def forward(self, xq, xc=None, mask=None):
         if xc is None:
