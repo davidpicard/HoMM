@@ -6,7 +6,7 @@ defaults:
   - _self_
 
 trainer:
-  _target_: pytorch_lightning.Trainer
+  _target_: lightning.pytorch.Trainer
   max_steps: 300000
   deterministic: True
   devices: ${computer.devices}
@@ -18,13 +18,13 @@ trainer:
   gradient_clip_val: 1.0
   
 checkpoints:
-  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  _target_: lightning.pytorch.callbacks.ModelCheckpoint
   dirpath: ${checkpoint_dir}/${experiment_name}
   save_last: True
   save_on_train_epoch_end: True
 
 progress_bar:
-  _target_: pytorch_lightning.callbacks.TQDMProgressBar
+  _target_: lightning.pytorch.callbacks.TQDMProgressBar
   refresh_rate: ${computer.progress_bar_refresh_rate}
 
 seed: 3407

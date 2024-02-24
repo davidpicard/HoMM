@@ -1,4 +1,4 @@
-import pytorch_lightning as L
+import lightning.pytorch as L
 from torch.utils.data import DataLoader
 import math
 import torch

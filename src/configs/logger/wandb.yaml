@@ -1,4 +1,4 @@
-_target_: pytorch_lightning.loggers.WandbLogger
+_target_: lightning.pytorch.loggers.WandbLogger
 save_dir: ${root_dir}/wandb
 name: ${experiment_name}
 project: Homm

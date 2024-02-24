@@ -1,5 +1,5 @@
 import numpy as np
-import pytorch_lightning as L
+import lightning.pytorch as L
 import torch
 import torch.nn as nn
 from diffusers import AutoencoderKL
