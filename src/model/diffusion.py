@@ -89,6 +89,7 @@ class DiffusionModule(L.LightningModule):
 
         # Set to False because we don't load the vae
         self.strict_loading = False
+        self._strict_loading = False
 
     def state_dict(self):
         # Don't save the encoder, it is not being trained
