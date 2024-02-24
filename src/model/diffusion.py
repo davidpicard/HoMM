@@ -215,6 +215,16 @@ class DiffusionModule(L.LightningModule):
                      "ice cream", "strawberry", "viaduc", "analog clock"]
         )
 
+    def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
+        if hasattr(self, "do_optimizer_step") and not self.do_optimizer_step:
+            print("Skipping optimizer step")
+            closure_result = optimizer_closure()
+            if closure_result is not None:
+                return closure_result
+            else:
+                return
+        else:
+            return super().optimizer_step(epoch, batch_idx, optimizer, optimizer_closure)
 
     def configure_optimizers(self):
         if self.optimizer_cfg.exclude_ln_and_biases_from_weight_decay:

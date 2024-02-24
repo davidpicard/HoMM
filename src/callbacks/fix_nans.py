@@ -1,5 +1,6 @@
 import logging
-from pytorch_lightning.callbacks import Callback
+from lightning import LightningModule, Trainer
+from lightning.pytorch.callbacks import Callback
 import torch
 
 log = logging.getLogger(__name__)
@@ -11,15 +12,19 @@ class FixNANinGrad(Callback):
         self.monitor = monitor
         self.continuous_nan_batchs = 0
 
-    def on_before_optimizer_step(self, trainer, pl_module, optimizer) -> None:
+    def on_before_backward(self, trainer, pl_module, loss):
+        pl_module.do_optimizer_step = True
+    def on_before_optimizer_step(self, trainer, pl_module, loss) -> None:
         has_nan = []
         is_inf = []
         for name, param in pl_module.named_parameters():
             if param.grad is not None:
                 if torch.isnan(param.grad).any():
                     has_nan.append(name)
+                    pl_module.do_optimizer_step = False
                 if torch.isinf(param.grad).any():
                     is_inf.append(name)
+                    pl_module.do_optimizer_step = False
                 torch.nan_to_num(param.grad, nan=0, posinf=0, neginf=0, out=param.grad)
         if len(has_nan) > 0:
             print(f"Found NaN in {has_nan}")
