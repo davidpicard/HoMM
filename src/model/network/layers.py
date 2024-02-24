@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-@torch.compile(fullgraph=False)
 def high_order_aggregation_(x: torch.Tensor, k: int, mask=None):
         h = list(F.gelu(x).chunk(k, dim=-1))
         for i in range(1, k):
@@ -32,12 +31,14 @@ class HoM(nn.Module):
         self.se_proj = nn.Linear(dim, order*order_expand*dim, bias=bias)
         self.ag_proj = nn.Linear(order*order_expand*dim, dim, bias=bias)
 
+        self.high_order_aggregation_ = torch.compile(high_order_aggregation_, fullgraph=False)
+
     def forward(self, xq, xc=None, mask=None):
         if xc is None:
             xc = xq # self attention
 
         # high order
-        h = high_order_aggregation_(self.ho_proj(xc), self.order, mask)
+        h = self.high_order_aggregation_(self.ho_proj(xc), self.order, mask)
 
         # selection
         s = F.sigmoid(self.se_proj(xq))
