@@ -88,7 +88,7 @@ class DiffusionModule(L.LightningModule):
             self.pipeline = DiTPipeline(model=model, scheduler=self.scheduler)
 
         # Set to False because we don't load the vae
-        self.strict_loading = False
+        self.strict_loading(False)
 
     def state_dict(self):
         # Don't save the encoder, it is not being trained
