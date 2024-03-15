@@ -76,7 +76,8 @@ class DiffusionModule(L.LightningModule):
                 model,
                 beta = ema_cfg.beta,
                 update_after_step= ema_cfg.update_after_step,
-                update_every= ema_cfg.update_every
+                update_every= ema_cfg.update_every,
+                include_online_model=False
             )
 
         # noise scheduler
