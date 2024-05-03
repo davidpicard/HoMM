@@ -5,7 +5,6 @@ import torch
 from model.network.imagediffusion import ClassConditionalDiHpp
 from model.diffusion import DiffusionModule, denormalize
 from model.sampler.sampler import DiTPipeline, DDIMLinearScheduler
-import matplotlib.pyplot as plt
 from torchvision.utils import save_image
 from tqdm import tqdm
 
