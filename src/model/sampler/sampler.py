@@ -78,7 +78,7 @@ class DDIMLinearScheduler():
 class AncestralEulerScheduler():
     def __init__(self,
                  n_timesteps,
-                 schedule = linear_schedule,
+                 schedule = cosine_schedule,
                  clip_img_pred=False):
         self.train_timesteps = n_timesteps
         self.timesteps = None
