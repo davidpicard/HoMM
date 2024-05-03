@@ -198,6 +198,10 @@ DiT_models = {
 ###############################
 # DiH
 
+# if using checkpointing on low mem devices
+# from torch.utils.checkpoint import checkpoint
+
+
 class DiHBlock(nn.Module):
     def __init__(self, dim: int, order: int, order_expand: int, ffw_expand: int):
         super().__init__()
@@ -226,7 +230,8 @@ class DiHBlock(nn.Module):
 
         # mha
         x_ln = modulation(self.mha_ln(x), s1, b1)
-        x = x + self.hom(x_ln)*(1+g1)
+        x = x + self.hom(x_ln) * (1 + g1)
+        # x = x + checkpoint(self.hom,x_ln, use_reentrant=False)*(1+g1)
 
         #ffw
         x_ln = modulation(self.ffw_ln(x), s2, b2)
@@ -363,7 +368,6 @@ DiH_models = {
 }
 
 
-
 class ClassConditionalDiHpp(nn.Module):
     def __init__(self,
                  input_dim: int,
@@ -486,6 +490,26 @@ class ClassConditionalDiHpp(nn.Module):
                                h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
 
         return out
+
+
+def DiHpp_S_2(**kwargs):
+    return ClassConditionalDiHpp(n_layers=12, dim=384, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+def DiHpp_S_4(**kwargs):
+    return ClassConditionalDiHpp(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
+def DiHpp_B_2(**kwargs):
+    return ClassConditionalDiHpp(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+def DiHpp_L_2(**kwargs):
+    return ClassConditionalDiHpp(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
+
+
+DiHpp_models = {
+#    'DiT-XL/2': DiT_XL_2,  'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
+    'DiHpp-L/2':  DiHpp_L_2,   # 'DiT-L/4':  DiT_L_4,   'DiT-L/8':  DiT_L_8,
+    'DiHpp-B/2':  DiHpp_B_2, #  'DiT-B/4':  DiT_B_4,   'DiT-B/8':  DiT_B_8,
+    'DiHpp-S/2':  DiHpp_S_2,   'DiHpp-S/4':  DiHpp_S_4,  # 'DiT-S/8':  DiT_S_8,
+}
+
+
 
 # https://github.com/facebookresearch/mae/blob/main/util/pos_embed.py
 def get_2d_sincos_pos_embed(embed_dim, grid_size, cls_token=False, extra_tokens=0):
