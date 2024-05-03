@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import torch
 from torch.utils.data import DataLoader
@@ -28,7 +29,9 @@ args = parser.parse_args()
 metrics = MultiInceptionMetrics(compute_conditional_metrics=True, compute_conditional_metrics_per_class=False)
 metrics = metrics.to(device)
 
-gen = ImageFolder(args.path_gen, transform=transforms, allow_empty=True)
+def non_empty(f):
+    return os.path.getsize(f) > 0
+gen = ImageFolder(args.path_gen, transform=transforms, is_valid_file=non_empty)
 gen = DataLoader(gen, batch_size=25, num_workers=2, shuffle=False)
 print('updating generated images')
 for x, y in tqdm(gen):
