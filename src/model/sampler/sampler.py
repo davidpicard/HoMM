@@ -19,11 +19,12 @@ def sigmoid_schedule(t):
 
 def karras_schedule(t):
     sigma_min = 1e-2
-    sigma_max = 1
+    sigma_max = 80
     rho = 7.
     min_inv_rho = sigma_min ** (1 / rho)
     max_inv_rho = sigma_max ** (1 / rho)
-    return 1-(max_inv_rho + t * (min_inv_rho - max_inv_rho)) ** rho
+    t = 1-(max_inv_rho + t * (min_inv_rho - max_inv_rho)) ** rho
+    return torch.clamp(t, 1e-6, 1.-1e-6)
 
 # adapted from N Dufour
 class SigmoidScheduler:
