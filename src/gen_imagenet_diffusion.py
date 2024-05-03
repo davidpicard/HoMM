@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import einops
 import torch
@@ -76,6 +77,7 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
     pipeline = DiTPipeline(model, DDIMLinearScheduler(args.time_emb, schedule=linear_schedule))
     # pipeline = DiTPipeline(model, AncestralEulerScheduler(args.time_emb))
     for i in tqdm(range(1000)):
+        os.makedirs("{}/{}".format(args.output, i), exist_ok=True)
         torch.manual_seed(3407)
         noise = torch.randn((args.n_images_per_class, 4, args.size//8, args.size//8)).to(device)
         label = torch.zeros((args.n_images_per_class), dtype=torch.long).to(device) + i
