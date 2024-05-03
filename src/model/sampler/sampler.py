@@ -9,7 +9,10 @@ def cosine_schedule(t):
     return torch.clamp(t, 1e-6, 1.-1e-6)
 
 def sigmoid_schedule(t):
-    return torch.sigmoid(-3 + 6*t).clamp(1e-6, 1.-1e-6)
+    t = torch.sigmoid(-3. + 6*t)
+    o = torch.tensor(1)
+    t = (t-torch.sigmoid(-3.*o))/(torch.sigmoid(3.*o)-torch.sigmoid(-3.*o))
+    return torch.clamp(t, 1e-6, 1.-1e-6)
     # start = -1
     # end = 3
     # tau = 0.5
@@ -84,7 +87,7 @@ class DDIMLinearScheduler():
 class AncestralEulerScheduler():
     def __init__(self,
                  n_timesteps,
-                 schedule = karras_schedule,
+                 schedule = sigmoid_schedule,
                  clip_img_pred=False):
         self.train_timesteps = n_timesteps
         self.timesteps = None
