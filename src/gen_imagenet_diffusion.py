@@ -81,5 +81,5 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         samples = vae.vae_decode(samples).detach()
         # samples = einops.rearrange(samples, "b c h w -> b h w c")
         for k in range(args.n_images_per_class):
-            save_image(samples[k], "{}/{}_{}.png".format(args.output, i, k))
+            save_image(samples[k], "{}/{}/{}.png".format(args.output, i, k))
 
