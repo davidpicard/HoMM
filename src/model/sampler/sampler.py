@@ -71,6 +71,52 @@ class DDIMLinearScheduler():
         # samples.clamp(-1, 1.)
         return samples, x_0
 
+
+class AncestralEulerScheduler():
+    def __init__(self,
+                 n_timesteps,
+                 schedule = linear_schedule,
+                 clip_img_pred=False):
+        self.train_timesteps = n_timesteps
+        self.timesteps = None
+        self.schedule = schedule
+        self.clip_img_pred = clip_img_pred
+
+    def add_noise(self, x, noise, t):
+        t = torch.clamp(t, 0, self.train_timesteps)
+        sigma = self.schedule(t/self.train_timesteps).view(x.shape[0], 1, 1, 1)
+        return torch.sqrt(1-sigma)*x + torch.sqrt(sigma)*noise
+
+    def set_timesteps(self, num_inference_steps):
+        timesteps = torch.linspace(0, self.train_timesteps, num_inference_steps)
+        self.num_inference_steps = num_inference_steps
+        self.timesteps = timesteps.flip(0)
+
+    def step(self, noise_pred, t, samples):
+        b, c, h, w = samples.shape
+        # pred x0
+        sigma_t = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
+        x_0 = (samples - torch.sqrt(sigma_t) * noise_pred) / torch.sqrt(1 - sigma_t)
+        if self.clip_img_pred:
+            x_0 = x_0.clamp(-1, 1)
+        # recompute sample at previous step
+        t = t - self.train_timesteps/self.num_inference_steps
+        sigma_t_minus_1 = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
+        sigma_down, sigma_up = self.get_ancestral_step(sigma_t, sigma_t_minus_1)
+        d = (samples - x_0)/sigma_t
+        dt = sigma_down - sigma_t
+        samples = samples + d * dt
+        samples = samples + torch.randn_like(samples) * sigma_up
+        return samples, x_0
+
+    def get_ancestral_step(self, sigma_from, sigma_to):
+        """Calculates the noise level (sigma_down) to step down to and the amount
+        of noise to add (sigma_up) when doing an ancestral sampling step."""
+        sigma_up = (sigma_to ** 2 * (sigma_from ** 2 - sigma_to ** 2) / sigma_from ** 2) ** 0.5
+        sigma_down = (sigma_to ** 2 - sigma_up ** 2) ** 0.5
+        return sigma_down, sigma_up
+
+
 class DiTPipeline():
     def __init__(
             self,
