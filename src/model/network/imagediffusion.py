@@ -381,7 +381,7 @@ class ClassConditionalDiHpp(nn.Module):
                  order_expand=4,
                  ffw_expand=4,
                  dropout=0.,
-                 n_registers=32):
+                 n_registers=16):
         super().__init__()
         self.input_dim = input_dim
         self.n_classes = n_classes
