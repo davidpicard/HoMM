@@ -17,6 +17,9 @@ def sigmoid_schedule(t):
     # v_end = torch.sigmoid(torch.tensor(end/tau))
     # return 1 - (v_end - torch.sigmoid((t*(end-start) + start))/tau)/(v_end - v_start)
 
+def vp_schedule(t):
+    return torch.sqrt(torch.exp(19.9 * t ** 2 / 2 + 0.1 * t) - 1)
+
 # adapted from N Dufour
 class SigmoidScheduler:
     def __init__(self, start=-1, end=3, tau=0.5, clip_min=1e-9):
@@ -102,19 +105,13 @@ class AncestralEulerScheduler():
         # recompute sample at previous step
         t = t - self.train_timesteps/self.num_inference_steps
         sigma_t_minus_1 = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
-        sigma_down, sigma_up = self.get_ancestral_step(sigma_t, sigma_t_minus_1)
+        sigma_up = (sigma_t_minus_1 ** 2 * (sigma_t ** 2 - sigma_t_minus_1 ** 2) / sigma_t ** 2) ** 0.5
+        sigma_down = (sigma_t_minus_1 ** 2 - sigma_up ** 2) ** 0.5
         d = (samples - x_0)/sigma_t
         dt = sigma_down - sigma_t
         samples = samples + d * dt
         samples = samples + torch.randn_like(samples) * sigma_up
         return samples, x_0
-
-    def get_ancestral_step(self, sigma_from, sigma_to):
-        """Calculates the noise level (sigma_down) to step down to and the amount
-        of noise to add (sigma_up) when doing an ancestral sampling step."""
-        sigma_up = (sigma_to ** 2 * (sigma_from ** 2 - sigma_to ** 2) / sigma_from ** 2) ** 0.5
-        sigma_down = (sigma_to ** 2 - sigma_up ** 2) ** 0.5
-        return sigma_down, sigma_up
 
 
 class DiTPipeline():
