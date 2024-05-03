@@ -4,7 +4,8 @@ import einops
 import torch
 from model.network.imagediffusion import ClassConditionalDiHpp
 from model.diffusion import DiffusionModule, denormalize
-from model.sampler.sampler import DiTPipeline, DDIMLinearScheduler, AncestralEulerScheduler, sigmoid_schedule
+from model.sampler.sampler import DiTPipeline, DDIMLinearScheduler, AncestralEulerScheduler, sigmoid_schedule, \
+    linear_schedule
 from torchvision.utils import save_image
 from tqdm import tqdm
 
@@ -72,7 +73,7 @@ vae.eval()
 
 print("sampling images...")
 with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
-    pipeline = DiTPipeline(model, DDIMLinearScheduler(args.time_emb, schedule=sigmoid_schedule))
+    pipeline = DiTPipeline(model, DDIMLinearScheduler(args.time_emb, schedule=linear_schedule))
     # pipeline = DiTPipeline(model, AncestralEulerScheduler(args.time_emb))
     for i in tqdm(range(1000)):
         torch.manual_seed(3407)
