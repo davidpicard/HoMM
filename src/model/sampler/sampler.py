@@ -17,8 +17,14 @@ def sigmoid_schedule(t):
     # v_end = torch.sigmoid(torch.tensor(end/tau))
     # return 1 - (v_end - torch.sigmoid((t*(end-start) + start))/tau)/(v_end - v_start)
 
-def vp_schedule(t):
-    return torch.sqrt(torch.exp(19.9 * t ** 2 / 2 + 0.1 * t) - 1)
+def karras_schedule(t):
+    t = 1-t
+    sigma_min = 1e-2
+    sigma_max = 2
+    rho = 7.
+    min_inv_rho = sigma_min ** (1 / rho)
+    max_inv_rho = sigma_max ** (1 / rho)
+    return (max_inv_rho + t * (min_inv_rho - max_inv_rho)) ** rho
 
 # adapted from N Dufour
 class SigmoidScheduler:
@@ -78,7 +84,7 @@ class DDIMLinearScheduler():
 class AncestralEulerScheduler():
     def __init__(self,
                  n_timesteps,
-                 schedule = cosine_schedule,
+                 schedule = karras_schedule,
                  clip_img_pred=False):
         self.train_timesteps = n_timesteps
         self.timesteps = None
