@@ -28,7 +28,7 @@ args = parser.parse_args()
 metrics = MultiInceptionMetrics(compute_conditional_metrics=True, compute_conditional_metrics_per_class=False)
 metrics = metrics.to(device)
 
-gen = ImageFolder(args.path_gen, transform=transforms)
+gen = ImageFolder(args.path_gen, transform=transforms, allow_empty=True)
 gen = DataLoader(gen, batch_size=25, num_workers=2, shuffle=False)
 print('updating generated images')
 for x, y in tqdm(gen):
