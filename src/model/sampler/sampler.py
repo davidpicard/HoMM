@@ -20,7 +20,7 @@ def sigmoid_schedule(t):
 def karras_schedule(t):
     t = 1-t
     sigma_min = 1e-2
-    sigma_max = 2
+    sigma_max = 1
     rho = 7.
     min_inv_rho = sigma_min ** (1 / rho)
     max_inv_rho = sigma_max ** (1 / rho)
