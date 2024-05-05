@@ -78,7 +78,7 @@ def train(cfg):
     #load weights
     if cfg.load_weight_from_checkpoint is not None:
         print('loading weights from {}'.format(cfg.load_weight_from_checkpoint))
-        sd = torch.load(cfg.load_weight_from_checkpoint)
+        sd = torch.load(cfg.load_weight_from_checkpoint, map_location=torch.device('cpu'))
         state_dict = sd['state_dict']
         module_state_dict = state_dict
         # for key, value in state_dict.items():
