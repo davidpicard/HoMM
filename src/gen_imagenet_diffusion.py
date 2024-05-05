@@ -81,7 +81,7 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         noise = torch.randn((args.n_images_per_class, 4, args.size//8, args.size//8)).to(device)
         label = torch.zeros((args.n_images_per_class), dtype=torch.long).to(device) + i
         samples = []
-        for b in range(args.n_image_perclass//10):
+        for b in range(args.n_images_per_class//10):
             fr = b*10
             to = min((b+1)*10, args.n_images_per_class)
             if args.cfg > 0.:
