@@ -81,9 +81,9 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         noise = torch.randn((args.n_images_per_class, 4, args.size//8, args.size//8)).to(device)
         label = torch.zeros((args.n_images_per_class), dtype=torch.long).to(device) + i
         samples = []
-        for b in range(args.n_images_per_class//10):
-            fr = b*10
-            to = min((b+1)*10, args.n_images_per_class)
+        for b in range(args.n_images_per_class//25):
+            fr = b*25
+            to = min((b+1)*25, args.n_images_per_class)
             if args.cfg > 0.:
                 sample_b = pipeline.sample_cfg(noise[fr:to, ...], class_labels=label[fr:to], cfg=args.cfg, device=device, num_inference_steps=args.n_timesteps)
             else:
