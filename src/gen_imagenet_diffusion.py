@@ -80,7 +80,16 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         torch.manual_seed(3407)
         noise = torch.randn((args.n_images_per_class, 4, args.size//8, args.size//8)).to(device)
         label = torch.zeros((args.n_images_per_class), dtype=torch.long).to(device) + i
-        samples = pipeline.sample_cfg(noise, class_labels=label, cfg=args.cfg, device=device, num_inference_steps=args.n_timesteps)
+        samples = []
+        for b in range(args.n_image_perclass//10):
+            fr = b*10
+            to = min((b+1)*10, args.n_images_per_class)
+            if args.cfg > 0.:
+                sample_b = pipeline.sample_cfg(noise[fr:to, ...], class_labels=label[fr:to], cfg=args.cfg, device=device, num_inference_steps=args.n_timesteps)
+            else:
+                sample_b = pipeline(noise[fr:to, ...], class_labels=label[fr:to], device=device, num_inference_steps=args.n_timesteps)
+            samples.append(sample_b)
+        samples = torch.cat(samples, dim=0)
         samples = vae.vae_decode(samples).detach()
         # samples = einops.rearrange(samples, "b c h w -> b h w c")
         os.makedirs("{}/{}".format(args.output, i), exist_ok=True)
