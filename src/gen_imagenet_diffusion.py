@@ -6,7 +6,7 @@ import torch
 from model.network.imagediffusion import ClassConditionalDiHpp
 from model.diffusion import DiffusionModule, denormalize
 from model.sampler.sampler import DiTPipeline, DDIMLinearScheduler, AncestralEulerScheduler, sigmoid_schedule, \
-    linear_schedule
+    linear_schedule, DDPMLinearScheduler
 from torchvision.utils import save_image
 from tqdm import tqdm
 
@@ -33,6 +33,7 @@ parser.add_argument("--time_emb", type=int, default=1000)
 parser.add_argument("--n_images_per_class", type=int, default=5)
 parser.add_argument("--cfg", type=float, default=1.5)
 parser.add_argument("--output", type=str, default="output")
+parser.add_argument("--sampler", type=str, default="ddim")
 
 args = parser.parse_args()
 
@@ -74,7 +75,11 @@ vae.eval()
 
 print("sampling images...")
 with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
-    pipeline = DiTPipeline(model, DDIMLinearScheduler(args.time_emb, schedule=linear_schedule))
+    sampler = DDIMLinearScheduler(args.time_emb, schedule=linear_schedule)
+    if args.sampler == "ddpm":
+        print('using DDPM')
+        sampler = DDPMLinearScheduler(args.time_emb, schedule=linear_schedule)
+    pipeline = DiTPipeline(model, sampler)
     # pipeline = DiTPipeline(model, AncestralEulerScheduler(args.time_emb))
     for i in tqdm(range(1000)):
         torch.manual_seed(3407)

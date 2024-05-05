@@ -83,6 +83,49 @@ class DDIMLinearScheduler():
         # samples.clamp(-1, 1.)
         return samples, x_0
 
+class DDPMLinearScheduler():
+    def __init__(self,
+                 n_timesteps,
+                 schedule = linear_schedule,
+                 clip_img_pred=False):
+        self.train_timesteps = n_timesteps
+        self.timesteps = None
+        self.schedule = schedule
+        self.clip_img_pred = clip_img_pred
+
+    def add_noise(self, x, noise, t):
+        t = torch.clamp(t, 0, self.train_timesteps)
+        sigma = self.schedule(t/self.train_timesteps).view(x.shape[0], 1, 1, 1)
+        return torch.sqrt(1-sigma)*x + torch.sqrt(sigma)*noise
+
+    def set_timesteps(self, num_inference_steps):
+        timesteps = torch.linspace(0, self.train_timesteps, num_inference_steps)
+        self.num_inference_steps = num_inference_steps
+        self.timesteps = timesteps.flip(0)
+
+    def step(self, noise_pred, t, samples):
+        b, c, h, w = samples.shape
+        sigma_now = self.schedule(t.clamp(0, self.train_timesteps - 1) / self.train_timesteps).view(b, 1, 1, 1)
+        x_pred = (samples - torch.sqrt(sigma_now) * noise_pred) / torch.sqrt(1-sigma_now)
+        if self.clip_img_pred:
+            x_pred = torch.clamp(x_pred, -1, 1)
+            noise_est = (samples - torch.sqrt(1-sigma_now) * x_pred) / torch.sqrt(sigma_now)
+        else:
+            noise_est = noise_pred
+
+        t = t - self.train_timesteps/self.num_inference_steps
+        sigma_next = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
+        log_alpha_t = torch.log(1-sigma_now) - torch.log(1-sigma_next)
+        alpha_t = torch.clip(torch.exp(log_alpha_t), 0, 1)
+        x_mean = torch.rsqrt(alpha_t) * (
+            samples - torch.rsqrt(sigma_now) * (1 - alpha_t) * noise_est
+        )
+        var_t = 1 - alpha_t
+        eps = torch.randn(samples.shape, device=samples.device)
+        x_next = x_mean + torch.sqrt(var_t) * eps
+        return x_next, x_pred
+
+
 
 class AncestralEulerScheduler():
     def __init__(self,
