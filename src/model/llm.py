@@ -121,7 +121,7 @@ class LLMModule(L.LightningModule):
             attention_mask = 1. * (tokens.attention_mask > 0.).to(self.device)
         n = attention_mask.sum().long() - 1
         next_token = 0
-        while next_token != 1 and n < 96:
+        while next_token != 1 and n < 64:
             mask = torch.tril(torch.ones((self.model.context_length, self.model.context_length))).unsqueeze(0).to(
                 self.device)  # b x n x n
             mask[0, :, n:] = 0  # removing extra
