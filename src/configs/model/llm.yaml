@@ -5,7 +5,7 @@ defaults:
   - optimizer: adamw
   - lr_scheduler: warmup_cosine_decay
 
-name: HoMMClsDiff
+name: HLM
 instance:
   _target_: model.llm.LLMModule
   model: ${model.network}
