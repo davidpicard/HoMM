@@ -14,9 +14,11 @@ def high_order_aggregation_(x: torch.Tensor, k: int, mask=None):
             if mask.dim()==2:
                 h = (h * mask.unsqueeze(-1)).sum(dim=1, keepdims=True)/mask.unsqueeze(-1).sum(dim=1, keepdims=True)
             elif mask.dim() ==3:
-                h = torch.einsum(h, mask, 'bnd, bmn -> bmd')/mask.sum(dim=2, keepdims=True) # b batch, n context tokens, m query tokens, d dim
+                mask = mask.type(h.dtype)
+                h = torch.einsum('bnd, bmn -> bmd', h, mask)  # b batch, n context tokens, m query tokens, d dim
+                h = h/(1+mask.sum(dim=2, keepdims=True))
             else:
-                raise Exception('unsupported dim for mask (should be 2 or None)')
+                raise Exception('unsupported dim for mask (should be 2,3 or None)')
         return h
 
 

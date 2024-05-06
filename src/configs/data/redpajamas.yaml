@@ -1,0 +1,22 @@
+defaults:
+  - _self_
+
+full_batch_size: 2
+full_val_batch_size: 2
+context_length: 1024
+name: RedPajamasV2
+
+dataset_builder:
+  _partial_: true
+  _target_: utils.data.build_redpajamasv2
+  dir: ${data_dir}
+  context_length: ${data.context_length}
+
+datamodule:
+  _target_: utils.datamodule.DataModule
+  dataset_builder: ${data.dataset_builder}
+  full_batch_size: ${data.full_batch_size}
+  full_val_batch_size: ${data.full_batch_size}
+  num_workers: ${computer.num_workers}
+  num_nodes: ${computer.num_nodes}
+  num_devices: ${computer.devices}

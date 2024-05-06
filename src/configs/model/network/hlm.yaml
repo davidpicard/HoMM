@@ -1,0 +1,8 @@
+_target_: model.network.llm.HLM
+vocab_size: 32128
+dim: 768
+n_layers: 11
+context_length: 1024
+order: 2
+order_expand: 2
+ffw_expand: 2

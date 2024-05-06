@@ -98,3 +98,77 @@ def build_imagefolder(data_dir, num_classes, size=224, additional_transforms=Non
         .squeeze(0),
     )
     return train, val
+
+
+# from datasets import load_dataset
+from torch.utils.data import Dataset, TensorDataset, IterableDataset
+import json
+import gzip
+import os
+from random import shuffle
+
+def build_redpajamasv2(dir, context_length):
+    # ds = load_dataset("togethercomputer/RedPajama-Data-V2", name="sample", data_dir=dir)
+    # # ds = load_dataset(
+    # #     path="togethercomputer/RedPajama-Data-V2",
+    # #     partition="head_middle",
+    # #     snapshots=["2023-14"],
+    # #     languages=["en"],
+    # #     name="default",
+    # #     data_dir=dir
+    # # )
+    # return ds["train"]
+
+    class RPv2(IterableDataset):
+        def __init__(self,
+                     dir,
+                     context_length):
+            self.dir = dir
+            self.context_length = context_length
+
+            json_list = []
+            for root, dirs, files in os.walk(dir):
+                if 'en_middle.json.gz' in files:
+                    json_list.append(os.path.join(root, "en_middle.json.gz"))
+                if 'en_head.json.gz' in files:
+                    json_list.append(os.path.join(root, "en_head.json.gz"))
+            shuffle(json_list)
+            self.json_list = json_list
+            # len = 0
+            # for jsongz in self.json_list:
+            #     with gzip.open(jsongz, "rt") as f:
+            #         len += sum(1 for row in f)
+            l = len(json_list)
+            self.len = l
+
+
+        def __iter__(self):
+            for jsongz in self.json_list:
+                with gzip.open(jsongz, "rt") as f:
+                    for row in f:
+                        entry = json.loads(row)
+                        txt = entry['raw_content']
+                        r = 0
+                        if len(txt) > self.context_length:
+                            r = torch.randint(0, len(txt)-self.context_length, (1,))
+                            txt = txt[r:r+self.context_length]
+                        yield txt, 0
+
+    class StringDataset(IterableDataset):
+        def __init__(self, context_length):
+            self.str = ["Quantum physics sparked a revolution of science by introducing",
+                        "I think, therefore I am\nI live and so I wonder\nProgrammed this empath me\nAnd I see no religion",
+                        "This public feature will make it easy for you to test internet latency via ICMP (Internet Control Message Protocol), test network routing (traceroute) and can test ping via TCP (Transmission Control Protocol) to anywhere in the world. This is very useful especially in checking ping to online game servers or any address that is opening the TCP connection port; you just need to know the address and have a web browser to check it right away without having to use other softwares.",
+                        "Fitness Expert\nNow Fitness Is Fun\nBenefits Of Going To Gym\nIn: Health\nFor many people, it is not practical to acquire gym equipment. The gear is expensive, and you probably do not have anyplace to put it, and it is definitely impractical to purchase and store the broad selection of machines which are needed for a correctly balanced workout. For that reason,Continue Reading\nMental Fitness Tips\nGeneral physical fitness refers to overall health. It means having the correct body weight and a capability to handle physical exercise without wearing down too fast. General health has been fit in a type of manner. If activities were utilized to attain good health weight reduction and maintenance of theContinue Reading\nFiber And Weight Loss\nDo you wake up each Monday morning with an excellent motivation to begin dieting to seem your vacation? By Wednesday – hump day – which solve is currently beginning to weaken and by Friday it is just gone. Come Monday morning it begins all over again. While you cannot beContinue Reading\nSoft Drinks and Obesity\nLDS individuals believe they’re cutting calories by drinking diet soft drink rather than sugar based drinks that are soft. What they don’t know is sugar based pop is not fattening than diet drink. Studies performed on faith in BYU and obesity shows Mormons are likely to be obese than membersContinue Reading\nYoga For Busy Moms\nMotherhood is among the roles. But, in addition, it comes along with challenges, especially. Motherhood may result in a lot of mental in addition to physical stress."]
+            self.context_length = context_length
+
+        def __iter__(self):
+            for txt in self.str:
+                r = 0
+                if len(txt) > self.context_length:
+                    r = torch.randint(0, len(txt) - self.context_length, (1,))
+                    txt = txt[r:r + self.context_length]
+                yield txt, r
+
+
+    return RPv2(dir, context_length=context_length), StringDataset(context_length=context_length)
