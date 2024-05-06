@@ -127,8 +127,9 @@ class LLMModule(L.LightningModule):
             mask[0, :, n:] = 0  # removing extra
             mask[0, n:, :] = 0
             pred = self.model(input_ids, mask)
-            dist = torch.distributions.categorical.Categorical(logits=2 * pred[0, n - 1])
-            next_token = dist.sample().item()
+            # dist = torch.distributions.categorical.Categorical(logits=2 * pred[0, n - 1])
+            # next_token = dist.sample().item()
+            next_token = pred[0, n-1].argmax().item()
             input_ids[0, n] = next_token
             n += 1
 

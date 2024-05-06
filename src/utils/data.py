@@ -126,6 +126,7 @@ def build_redpajamasv2(dir, context_length):
             self.dir = dir
             self.context_length = context_length
 
+            print('scanning for files')
             json_list = []
             for root, dirs, files in os.walk(dir):
                 if 'en_middle.json.gz' in files:
@@ -139,6 +140,7 @@ def build_redpajamasv2(dir, context_length):
             #     with gzip.open(jsongz, "rt") as f:
             #         len += sum(1 for row in f)
             l = len(json_list)
+            print(f"scanning done with {l} files found")
             self.len = l
 
 
