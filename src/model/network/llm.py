@@ -55,12 +55,12 @@ class HLM(nn.Module):
         self.token_emb = nn.Embedding(vocab_size, dim)
         self.output_proj = nn.Linear(dim, vocab_size, bias=False)
 
-        def init_weights_(m):
-            if isinstance(m, nn.Linear):
-                nn.init.xavier_uniform_(m.weight)
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-        self.apply(init_weights_)
+        # def init_weights_(m):
+        #     if isinstance(m, nn.Linear):
+        #         nn.init.xavier_uniform_(m.weight)
+        #         if m.bias is not None:
+        #             nn.init.zeros_(m.bias)
+        # self.apply(init_weights_)
         nn.init.zeros_(self.output_proj.weight)
         # nn.init.constant_(self.output_proj.bias, -np.log(self.context_length))
 
