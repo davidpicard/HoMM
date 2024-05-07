@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.checkpoint import checkpoint
+
 from .layers import HoM
 
 
@@ -78,7 +80,7 @@ class HLM(nn.Module):
 
         #big loop
         for l in self.layers:
-            x_hidden = l(x_hidden, mask)
+            x_hidden = checkpoint(l, x_hidden, mask, use_reentrant=False)
 
         # predict
         out = self.output_proj(x_hidden)
@@ -89,6 +91,15 @@ def HLM150M():
     return HLM(vocab_size=32128,
                dim=768,
                n_layers=11,
+               context_length=1024,
+               order=2,
+               order_expand=2,
+               ffw_expand=2)
+
+def HLM300M():
+    return HLM(vocab_size=32128,
+               dim=1024,
+               n_layers=14,
                context_length=1024,
                order=2,
                order_expand=2,
