@@ -121,18 +121,14 @@ def build_redpajamasv2(dir, context_length):
 
     class RPv2(IterableDataset):
         def __init__(self,
-                     dir,
+                     list_file,
                      context_length):
-            self.dir = dir
+            self.dirfile = list_file
             self.context_length = context_length
-
-            print('scanning for files')
             json_list = []
-            for root, dirs, files in os.walk(dir):
-                if 'en_middle.json.gz' in files:
-                    json_list.append(os.path.join(root, "en_middle.json.gz"))
-                if 'en_head.json.gz' in files:
-                    json_list.append(os.path.join(root, "en_head.json.gz"))
+            with open(list_file, "r") as f:
+                for entry in f:
+                    json_list.append(entry.strip())
             shuffle(json_list)
             self.json_list = json_list
             # len = 0
@@ -149,6 +145,8 @@ def build_redpajamasv2(dir, context_length):
                 with gzip.open(jsongz, "rt") as f:
                     for row in f:
                         entry = json.loads(row)
+                        if entry["language_score"] < 0.9: # skip poor texts
+                            continue
                         txt = entry['raw_content']
                         r = 0
                         if len(txt) > self.context_length:

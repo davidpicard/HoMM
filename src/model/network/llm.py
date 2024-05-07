@@ -14,13 +14,15 @@ class HLMLayer(nn.Module):
                  context_length,
                  order,
                  order_expand,
-                 ffw_expand):
+                 ffw_expand,
+                 checkpoint_hom=False):
         super().__init__()
         self.dim = dim
         self.context_length = context_length
         self.order = order
         self.order_expand = order_expand
         self.ffw_expand = ffw_expand
+        self.checkpoint_hom = checkpoint_hom
 
         self.hom = HoM(dim=dim, order=order, order_expand=order_expand, bias=True)
         self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand * dim, bias=True),
@@ -28,7 +30,10 @@ class HLMLayer(nn.Module):
                                  nn.Linear(ffw_expand * dim, dim, bias=True))
 
     def forward(self, x, mask):
-        x = x + self.hom(x, x, mask)
+        if self.checkpoint_hom:
+            x = x + checkpoint(self.hom, x, x, mask, use_reentrant=False)
+        else:
+            x = x + self.hom(x, x, mask)
         x = x + self.ffw(x)
         return x
 
@@ -41,7 +46,8 @@ class HLM(nn.Module):
                  order=2,
                  order_expand=2,
                  ffw_expand=2,
-                 n_registers=16):
+                 n_registers=16,
+                 checkpoint_hom=False):
         super().__init__()
         self.vocab_size = vocab_size
         self.dim = dim
@@ -51,20 +57,21 @@ class HLM(nn.Module):
         self.order_expand = order_expand
         self.ffw_expand = ffw_expand
         self.n_registers = n_registers
+        self.checkpoint_hom = checkpoint_hom
 
-        self.registers = nn.Parameter(torch.zeros(1, n_registers, dim), requires_grad=True)
-        self.layers = nn.ModuleList([HLMLayer(dim, context_length, order, order_expand, ffw_expand) for i in range(n_layers)])
+        # self.registers = nn.Parameter(torch.zeros(1, n_registers, dim), requires_grad=True)
+        self.layers = nn.ModuleList([HLMLayer(dim, context_length, order, order_expand, ffw_expand, checkpoint_hom=checkpoint_hom) for i in range(n_layers)])
         self.token_emb = nn.Embedding(vocab_size, dim)
-        self.output_proj = nn.Linear(dim, vocab_size, bias=False)
+        self.output_proj = nn.Linear(dim, vocab_size, bias=True)
 
-        # def init_weights_(m):
-        #     if isinstance(m, nn.Linear):
-        #         nn.init.xavier_uniform_(m.weight)
-        #         if m.bias is not None:
-        #             nn.init.zeros_(m.bias)
-        # self.apply(init_weights_)
+        def init_weights_(m):
+            if isinstance(m, nn.Linear):
+                # nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.zeros_(m.bias)
+        self.apply(init_weights_)
         nn.init.zeros_(self.output_proj.weight)
-        # nn.init.constant_(self.output_proj.bias, -np.log(self.context_length))
+        nn.init.constant_(self.output_proj.bias, -np.log(self.context_length))
 
     def forward(self, x, mask, pos_offset=None): # x has size b x seq_length with b always = 1
         # embed ids
@@ -80,7 +87,7 @@ class HLM(nn.Module):
 
         #big loop
         for l in self.layers:
-            x_hidden = checkpoint(l, x_hidden, mask, use_reentrant=False)
+            x_hidden = l(x_hidden, mask)
 
         # predict
         out = self.output_proj(x_hidden)
