@@ -110,7 +110,9 @@ class LLMModule(L.LightningModule):
                 on_epoch=True,
                 prog_bar = True
             )
+        return loss
 
+    def on_validation_epoch_end(self) -> None:
         # auto-regressive text generation
         txt = "Generative AI is going to change the world because"
         with ((torch.no_grad())):
@@ -134,9 +136,9 @@ class LLMModule(L.LightningModule):
             n += 1
 
         decoded = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
-        self.logger.log_text("val/text_gen", columns=["global_step", "input", "output"], data=[[self.global_step, txt, decoded]], step=self.global_step)
+        # self.logger.log_text("val/text_gen", columns=["global_step", "input", "output"], data=[[self.global_step, txt, decoded]], step=self.global_step)
+        self.logger.log_image(key="samples", images=[torch.ones((3, 2, 256)), torch.ones((3, 2, 256))], caption=[txt, decoded])
 
-        return loss
 
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
         if hasattr(self, "do_optimizer_step") and not self.do_optimizer_step:
@@ -151,7 +153,8 @@ class LLMModule(L.LightningModule):
 
     def configure_optimizers(self):
         if self.optimizer_cfg.exclude_ln_and_biases_from_weight_decay:
-            parameters_names_wd = get_parameter_names(self.model, [nn.LayerNorm])
+            print("Removing LN, Embedding and biases from weight decay")
+            parameters_names_wd = get_parameter_names(self.model, [nn.LayerNorm, nn.Embedding])
             parameters_names_wd = [
                 name for name in parameters_names_wd if "bias" not in name
             ]
@@ -162,7 +165,7 @@ class LLMModule(L.LightningModule):
                         for n, p in self.model.named_parameters()
                         if n in parameters_names_wd
                     ],
-                    "weight_decay": self.optimizer_cfg.optimizer.optim.weight_decay,
+                    "weight_decay": self.optimizer_cfg.optim.keywords["weight_decay"],
                     "layer_adaptation": True,  # for lamb
                 },
                 {

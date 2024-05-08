@@ -62,7 +62,13 @@ class HLM(nn.Module):
         # self.registers = nn.Parameter(torch.zeros(1, n_registers, dim), requires_grad=True)
         self.layers = nn.ModuleList([HLMLayer(dim, context_length, order, order_expand, ffw_expand, checkpoint_hom=checkpoint_hom) for i in range(n_layers)])
         self.token_emb = nn.Embedding(vocab_size, dim)
-        self.output_proj = nn.Linear(dim, vocab_size, bias=True)
+        self.output_proj = nn.Linear(dim, vocab_size, bias=False)
+
+        # pos emb
+        self.freqs = nn.Parameter(torch.exp(-2 * np.log(4*context_length) * torch.arange(0, dim//2) / dim), requires_grad=False)
+        self.pos_emb = nn.Sequential(nn.Linear(dim, 2*dim, bias=True),
+                                      nn.SiLU(),
+                                      nn.Linear(2*dim, dim, bias=True))
 
         def init_weights_(m):
             if isinstance(m, nn.Linear):
@@ -71,7 +77,7 @@ class HLM(nn.Module):
                     nn.init.zeros_(m.bias)
         self.apply(init_weights_)
         nn.init.zeros_(self.output_proj.weight)
-        nn.init.constant_(self.output_proj.bias, -np.log(self.context_length))
+        # nn.init.constant_(self.output_proj.bias, -np.log(self.context_length))
 
     def forward(self, x, mask, pos_offset=None): # x has size b x seq_length with b always = 1
         # embed ids
@@ -79,10 +85,13 @@ class HLM(nn.Module):
         b, n, d = x_hidden.shape
 
         # add pos embedding
-        pos = torch.arange(0, self.context_length).unsqueeze(0)
+        pos = torch.arange(0, self.context_length).unsqueeze(0).to(x_hidden.device)
         if pos_offset is not None:
             pos = pos + pos_offset.unsqueeze(1).to(pos.device) # b x n
-        pos = get_1d_sincos_pos_embed_from_grid(self.dim, pos)
+        pos = torch.einsum("bn, d -> bnd", pos, self.freqs)
+        pos = torch.cat([pos.cos(), pos.sin()], dim=2)
+        pos = self.pos_emb(pos)
+        # pos = get_1d_sincos_pos_embed_from_grid(self.dim, pos)
         x_hidden = x_hidden + pos.to(x_hidden.device)
 
         #big loop
