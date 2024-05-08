@@ -229,7 +229,8 @@ class DiffusionModule(L.LightningModule):
 
     def configure_optimizers(self):
         if self.optimizer_cfg.exclude_ln_and_biases_from_weight_decay:
-            parameters_names_wd = get_parameter_names(self.model, [nn.LayerNorm])
+            print("Removing LN, Embedding and biases from weight decay")
+            parameters_names_wd = get_parameter_names(self.model, [nn.LayerNorm, nn.Embedding])
             parameters_names_wd = [
                 name for name in parameters_names_wd if "bias" not in name
             ]
@@ -240,7 +241,7 @@ class DiffusionModule(L.LightningModule):
                         for n, p in self.model.named_parameters()
                         if n in parameters_names_wd
                     ],
-                    "weight_decay": self.optimizer_cfg.optimizer.optim.weight_decay,
+                    "weight_decay": self.optimizer_cfg.optim.keywords["weight_decay"],
                     "layer_adaptation": True,  # for lamb
                 },
                 {
