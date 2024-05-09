@@ -144,7 +144,7 @@ def build_redpajamasv2(dir, context_length):
             for jsongz in self.json_list:
                 with gzip.open(jsongz, "rt") as f:
                     for row in f:
-                        if torch.rand((1,)) < 0.95:
+                        if torch.rand(1) < 0.95:
                             continue
                         entry = json.loads(row)
                         if entry["language_score"] < 0.9: # skip poor texts
@@ -152,7 +152,7 @@ def build_redpajamasv2(dir, context_length):
                         txt = entry['raw_content']
                         r = 0
                         if len(txt) > self.context_length:
-                            r = torch.randint(0, len(txt)-self.context_length, (1,))
+                            r = torch.randint(0, len(txt)-self.context_length, (1,)).item()
                             txt = txt[r:r+self.context_length]
                         yield txt, r
 
