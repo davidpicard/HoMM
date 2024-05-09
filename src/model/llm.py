@@ -58,7 +58,7 @@ class LLMModule(L.LightningModule):
         pred = rearrange(pred, "(b n) d -> b n d", b=b)
         target = rearrange(target, "(b n) -> b n", b=b)
         pe = perplexity(pred, target, ignore_index=-100)
-        loss = {"loss": xe.mean(), "perplexity": pe}
+        loss = {"loss": xe.mean().clamp_max(15.0), "perplexity": pe}
 
         for metric_name, metric_value in loss.items():
             self.log(
@@ -137,7 +137,7 @@ class LLMModule(L.LightningModule):
 
         decoded = self.tokenizer.decode(input_ids[0], skip_special_tokens=True)
         # self.logger.log_text("val/text_gen", columns=["global_step", "input", "output"], data=[[self.global_step, txt, decoded]], step=self.global_step)
-        self.logger.log_image(key="samples", images=[torch.ones((3, 2, 256)), torch.ones((3, 2, 256))], caption=[txt, decoded])
+        self.logger.log_image(key="gen_text", images=[torch.ones((3, 2, 256)), torch.ones((3, 2, 256))], caption=[txt, decoded])
 
 
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
