@@ -112,10 +112,10 @@ def HLM150M():
                order_expand=2,
                ffw_expand=2)
 
-def HLM300M():
+def HLM350M():
     return HLM(vocab_size=32128,
                dim=1024,
-               n_layers=14,
+               n_layers=20,
                context_length=1024,
                order=2,
                order_expand=2,
@@ -125,6 +125,25 @@ def HLM500M():
     return HLM(vocab_size=32128,
                dim=1280,
                n_layers=16,
+               context_length=2048,
+               order=2,
+               order_expand=2,
+               ffw_expand=2)
+
+
+def HLM760M():
+    return HLM(vocab_size=32128,
+               dim=1536,
+               n_layers=20,
+               context_length=2048,
+               order=2,
+               order_expand=2,
+               ffw_expand=2)
+
+def HLM1p3B():
+    return HLM(vocab_size=32128,
+               dim=2048,
+               n_layers=20,
                context_length=2048,
                order=2,
                order_expand=2,
@@ -150,7 +169,10 @@ def HLM3B():
 
 HLMModels = {
     'HLM150M': HLM150M,
+    'HLM350M': HLM350M,
     'HLM500M': HLM500M,
+    'HLM760M': HLM760M,
+    'HLM1p3B': HLM1p3B,
     'HLM2B': HLM2B,
     'HLM3B': HLM3B
 }
