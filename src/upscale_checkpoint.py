@@ -23,7 +23,7 @@ else:
 module = DiffusionModule(model, None, None, None, None, None, False, False)
 
 print('loading ckpt')
-ckpt = torch.load(args.checkpoint)
+ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'))
 module.load_state_dict(ckpt['state_dict'], strict=False)
 model = module.model
 print('loaded')
