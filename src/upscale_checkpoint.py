@@ -34,6 +34,7 @@ print('done (new shape: {})'.format(pos_up.shape))
 
 print('saving new checkpoint')
 ckpt['state_dict']['model.pos_emb'] = pos_up
+ckpt['state_dict']['ema.ema_model'] = pos_up
 torch.save(ckpt, args.new_checkpoint)
 print('done')
 
