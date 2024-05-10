@@ -14,7 +14,10 @@ parser.add_argument("--new-size", required=True, type=int)
 parser.add_argument("--new-checkpoint", required=True)
 args = parser.parse_args()
 
-model = DiH_models[args.model_name](n_classes=1000, input_dim=4, im_size=args.size//8, n_timesteps=250)
+if "pp" in args.model_name:
+    model = DiHpp_models[args.model_name](n_classes=1000, input_dim=4, im_size=args.size // 8, n_timesteps=250)
+else:
+    model = DiH_models[args.model_name](n_classes=1000, input_dim=4, im_size=args.size//8, n_timesteps=250)
 module = DiffusionModule(model, None, None, None, None, None, False, False)
 
 print('loading ckpt')
