@@ -44,7 +44,9 @@ if dihpp:
     cond_pos = model.cond_pos_emb
     print('expanding conditional pos emb (old shape: {})'.format(cond_pos.shape))
     cond_pos_r = cond_pos[0:model.n_registers]
-    pos = cond_pos[model.n_registers:]
+    print('found {} registers'.format(model.n_registers))
+    pos = cond_pos[model.n_registers:, ...]
+    print('cond pos emb after removing registers: {}'.format(pos.shape))
     pos = einops.rearrange(pos, "b (h w) d -> b d h w", h=args.size//8)
     pos_up = torch.nn.functional.interpolate(pos, scale_factor=scale, mode='nearest')
     pos_up = einops.rearrange(pos_up, "b d h w -> b (h w) d")
