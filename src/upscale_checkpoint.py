@@ -29,10 +29,10 @@ print('loaded')
 scale = args.new_size/args.size
 print('rescaling {} to {} (scale: {})'.format(args.size, args.new_size, scale))
 pos = model.pos_emb
+print('expanding (old shape: {})'.format(pos.shape))
 pos = einops.rearrange(pos, "b (h w) d -> b d h w", h=args.size//8)
 pos_up = torch.nn.functional.interpolate(pos, scale_factor=scale, mode='nearest')
 pos_up = einops.rearrange(pos_up, "b d h w -> b (h w) d")
-pos_up.shape
 print('done (new shape: {})'.format(pos_up.shape))
 
 print('saving new checkpoint')
