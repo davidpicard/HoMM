@@ -5,8 +5,7 @@ import einops
 import torch
 from model.network.imagediffusion import ClassConditionalDiHpp
 from model.diffusion import DiffusionModule, denormalize
-from model.sampler.sampler import DiTPipeline, DDIMLinearScheduler, AncestralEulerScheduler, sigmoid_schedule, \
-    linear_schedule, DDPMLinearScheduler
+from model.sampler.sampler import *
 from torchvision.utils import save_image
 from tqdm import tqdm
 
@@ -34,6 +33,7 @@ parser.add_argument("--n_images_per_class", type=int, default=5)
 parser.add_argument("--cfg", type=float, default=1.5)
 parser.add_argument("--output", type=str, default="output")
 parser.add_argument("--sampler", type=str, default="ddim")
+parser.add_argument("--cfg-scheduler", type=str, default="none")
 
 args = parser.parse_args()
 
@@ -73,6 +73,10 @@ model.eval()
 vae = plmodule.vae.to(device)
 vae.eval()
 
+cfg_scheduler = None
+if args.cfg_scheduler == "linear":
+    cfg_scheduler = linear
+
 print("sampling images...")
 with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
     sampler = DDIMLinearScheduler(args.time_emb, schedule=linear_schedule)
@@ -90,7 +94,12 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
             fr = b*25
             to = min((b+1)*25, args.n_images_per_class)
             if args.cfg > 0.:
-                sample_b = pipeline.sample_cfg(noise[fr:to, ...], class_labels=label[fr:to], cfg=args.cfg, device=device, num_inference_steps=args.n_timesteps)
+                sample_b = pipeline.sample_cfg(noise[fr:to, ...],
+                                               class_labels=label[fr:to],
+                                               cfg=args.cfg,
+                                               device=device,
+                                               num_inference_steps=args.n_timesteps,
+                                               cfg_scheduler=cfg_scheduler)
             else:
                 sample_b = pipeline(noise[fr:to, ...], class_labels=label[fr:to], device=device, num_inference_steps=args.n_timesteps)
             samples.append(sample_b)
