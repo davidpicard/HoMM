@@ -137,6 +137,7 @@ class DiffusionModule(L.LightningModule):
     def validation_step(self, batch, batch_idx):
         if self.global_rank == 0:
             img, label = batch
+            label = label.argmax(dim=1)
             # img = img[0:8, ...]
             # label = label[0:8, ...].argmax(dim=1)
 
