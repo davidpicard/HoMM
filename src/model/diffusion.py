@@ -137,8 +137,8 @@ class DiffusionModule(L.LightningModule):
     def validation_step(self, batch, batch_idx):
         if self.global_rank == 0:
             img, label = batch
-            img = img[0:8, ...]
-            label = label[0:8, ...].argmax(dim=1)
+            # img = img[0:8, ...]
+            # label = label[0:8, ...].argmax(dim=1)
 
             if self.latent_vae:
                 with torch.no_grad():
@@ -166,26 +166,26 @@ class DiffusionModule(L.LightningModule):
                     on_step=True,
                     on_epoch=True,
                 )
-            if self.latent_vae:
-                img = self.vae.vae_decode(img_noisy).detach()
-            self.logger.log_image(
-                key="image_input",
-                images=[img[0], img[1], img[2], img[3],
-                        img[4], img[5], img[6], img[7]]
-            )
-            if not self.latent_vae:
-                self.logger.log_image(
-                    key="noise_predictions",
-                    images=[pred[0], pred[1], pred[2], pred[3],
-                            pred[4], pred[5], pred[6], pred[7]]
-                )
-            if self.latent_vae:
-                x_0 = self.vae.vae_decode(x_0).detach()
-            self.logger.log_image(
-                key="image_predictions",
-                images=[x_0[0], x_0[1], x_0[2], x_0[3],
-                        x_0[4], x_0[5], x_0[6], x_0[7]]
-            )
+            # if self.latent_vae:
+            #     img = self.vae.vae_decode(img_noisy).detach()
+            # self.logger.log_image(
+            #     key="image_input",
+            #     images=[img[0], img[1], img[2], img[3],
+            #             img[4], img[5], img[6], img[7]]
+            # )
+            # if not self.latent_vae:
+            #     self.logger.log_image(
+            #         key="noise_predictions",
+            #         images=[pred[0], pred[1], pred[2], pred[3],
+            #                 pred[4], pred[5], pred[6], pred[7]]
+            #     )
+            # if self.latent_vae:
+            #     x_0 = self.vae.vae_decode(x_0).detach()
+            # self.logger.log_image(
+            #     key="image_predictions",
+            #     images=[x_0[0], x_0[1], x_0[2], x_0[3],
+            #             x_0[4], x_0[5], x_0[6], x_0[7]]
+            # )
 
             # sample images
             label = torch.zeros_like(label)
