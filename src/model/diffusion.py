@@ -135,86 +135,87 @@ class DiffusionModule(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        img, label = batch
-        img = img[0:8, ...]
-        label = label[0:8, ...].argmax(dim=1)
+        if self.global_rank == 0:
+            img, label = batch
+            img = img[0:8, ...]
+            label = label[0:8, ...].argmax(dim=1)
 
-        if self.latent_vae:
-            with torch.no_grad():
-                img = self.vae.vae_encode(img)
-                # img = img * 0.1
+            if self.latent_vae:
+                with torch.no_grad():
+                    img = self.vae.vae_encode(img)
+                    # img = img * 0.1
 
-        b, c, h, w = img.shape
-        #sample time, noise, make noisy
-        # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
-        time = torch.linspace(0, self.n_timesteps, b).to(img.device)
-        # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
-        eps = torch.randn_like(img)
-        img_noisy = self.scheduler.add_noise(img, eps, time)
-        pred = self.model(img_noisy, time, label)
-        loss = self.loss(pred, eps, average=True)
-        self.scheduler.set_timesteps(self.n_timesteps)
-        _, x_0 = self.scheduler.step(pred, time, img_noisy)
+            b, c, h, w = img.shape
+            #sample time, noise, make noisy
+            # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
+            time = torch.linspace(0, self.n_timesteps, b).to(img.device)
+            # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
+            eps = torch.randn_like(img)
+            img_noisy = self.scheduler.add_noise(img, eps, time)
+            pred = self.model(img_noisy, time, label)
+            loss = self.loss(pred, eps, average=True)
+            self.scheduler.set_timesteps(self.n_timesteps)
+            _, x_0 = self.scheduler.step(pred, time, img_noisy)
 
-        # logging
-        for metric_name, metric_value in loss.items():
-            self.log(
-                f"val/{metric_name}",
-                metric_value,
-                sync_dist=True,
-                on_step=True,
-                on_epoch=True,
-            )
-        if self.latent_vae:
-            img = self.vae.vae_decode(img_noisy).detach()
-        self.logger.log_image(
-            key="image_input",
-            images=[img[0], img[1], img[2], img[3],
-                    img[4], img[5], img[6], img[7]]
-        )
-        if not self.latent_vae:
+            # logging
+            for metric_name, metric_value in loss.items():
+                self.log(
+                    f"val/{metric_name}",
+                    metric_value,
+                    sync_dist=True,
+                    on_step=True,
+                    on_epoch=True,
+                )
+            if self.latent_vae:
+                img = self.vae.vae_decode(img_noisy).detach()
             self.logger.log_image(
-                key="noise_predictions",
-                images=[pred[0], pred[1], pred[2], pred[3],
-                        pred[4], pred[5], pred[6], pred[7]]
+                key="image_input",
+                images=[img[0], img[1], img[2], img[3],
+                        img[4], img[5], img[6], img[7]]
             )
-        if self.latent_vae:
-            x_0 = self.vae.vae_decode(x_0).detach()
-        self.logger.log_image(
-            key="image_predictions",
-            images=[x_0[0], x_0[1], x_0[2], x_0[3],
-                    x_0[4], x_0[5], x_0[6], x_0[7]]
-        )
+            if not self.latent_vae:
+                self.logger.log_image(
+                    key="noise_predictions",
+                    images=[pred[0], pred[1], pred[2], pred[3],
+                            pred[4], pred[5], pred[6], pred[7]]
+                )
+            if self.latent_vae:
+                x_0 = self.vae.vae_decode(x_0).detach()
+            self.logger.log_image(
+                key="image_predictions",
+                images=[x_0[0], x_0[1], x_0[2], x_0[3],
+                        x_0[4], x_0[5], x_0[6], x_0[7]]
+            )
 
-        # sample images
-        label = torch.zeros_like(label)
-        label[0] = 1 # goldfish
-        label[1] = 9 # ostrich
-        label[2] = 18 # magpie
-        label[3] = 249 # malamut
-        label[4] = 928 # ice cream
-        label[5] = 949 # strawberry
-        label[6] = 888 # viaduc
-        label[7] = 409 # analog clock
-        gen = torch.Generator(device=img_noisy.device)
-        gen.manual_seed(3407)
-        samples = torch.randn(size=img_noisy.size(), generator=gen, dtype=img_noisy.dtype, layout=img_noisy.layout, device=img_noisy.device)
-        samples = self.pipeline.sample_cfg(
-            samples,
-            label,
-            cfg=4,
-            num_inference_steps=50,
-            device=img.device
-        )
-        if self.latent_vae:
-            samples = self.vae.vae_decode(samples).detach()
-        self.logger.log_image(
-            key="samples",
-            images=[samples[0], samples[1], samples[2], samples[3],
-                    samples[4], samples[5], samples[6], samples[7]],
-            caption=["goldfish", "ostrich", "magpie", "malamute",
-                     "ice cream", "strawberry", "viaduc", "analog clock"]
-        )
+            # sample images
+            label = torch.zeros_like(label)
+            label[0] = 1 # goldfish
+            label[1] = 9 # ostrich
+            label[2] = 18 # magpie
+            label[3] = 249 # malamut
+            label[4] = 928 # ice cream
+            label[5] = 949 # strawberry
+            label[6] = 888 # viaduc
+            label[7] = 409 # analog clock
+            gen = torch.Generator(device=img_noisy.device)
+            gen.manual_seed(3407)
+            samples = torch.randn(size=img_noisy.size(), generator=gen, dtype=img_noisy.dtype, layout=img_noisy.layout, device=img_noisy.device)
+            samples = self.pipeline.sample_cfg(
+                samples,
+                label,
+                cfg=4,
+                num_inference_steps=50,
+                device=img.device
+            )
+            if self.latent_vae:
+                samples = self.vae.vae_decode(samples).detach()
+            self.logger.log_image(
+                key="samples",
+                images=[samples[0], samples[1], samples[2], samples[3],
+                        samples[4], samples[5], samples[6], samples[7]],
+                caption=["goldfish", "ostrich", "magpie", "malamute",
+                         "ice cream", "strawberry", "viaduc", "analog clock"]
+            )
 
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
         if hasattr(self, "do_optimizer_step") and not self.do_optimizer_step:
