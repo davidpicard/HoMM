@@ -190,7 +190,7 @@ class DiffusionModule(L.LightningModule):
             # )
 
             # sample images
-            label = torch.zeros((8,)).to(img.device)
+            label = torch.zeros((8,)).long().to(img.device)
             label[0] = 1 # goldfish
             label[1] = 9 # ostrich
             label[2] = 18 # magpie
