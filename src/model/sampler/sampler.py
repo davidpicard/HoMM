@@ -208,5 +208,5 @@ def linear(t):
 def clamp_linear(c=0.1):
     return lambda t: torch.clamp_min_(1-t, c)
 def trunc_linear(c=0.1):
-    return lambda t: (1-t)*((1-t)<c)
+    return lambda t: (1-t)*((1-t)>c)
 
