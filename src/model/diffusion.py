@@ -135,38 +135,39 @@ class DiffusionModule(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
+        img, label = batch
+        label = label.argmax(dim=1)
+        # img = img[0:8, ...]
+        # label = label[0:8, ...].argmax(dim=1)
+
+        if self.latent_vae:
+            with torch.no_grad():
+                img = self.vae.vae_encode(img)
+                # img = img * 0.1
+
+        b, c, h, w = img.shape
+        #sample time, noise, make noisy
+        # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
+        time = torch.linspace(0, self.n_timesteps, b).to(img.device)
+        # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
+        eps = torch.randn_like(img)
+        img_noisy = self.scheduler.add_noise(img, eps, time)
+        pred = self.model(img_noisy, time, label)
+        loss = self.loss(pred, eps, average=True)
+        self.scheduler.set_timesteps(self.n_timesteps)
+        _, x_0 = self.scheduler.step(pred, time, img_noisy)
+
+        # logging
+        for metric_name, metric_value in loss.items():
+            self.log(
+                f"val/{metric_name}",
+                metric_value,
+                sync_dist=True,
+                on_step=True,
+                on_epoch=True,
+            )
+
         if self.global_rank == 0:
-            img, label = batch
-            label = label.argmax(dim=1)
-            # img = img[0:8, ...]
-            # label = label[0:8, ...].argmax(dim=1)
-
-            if self.latent_vae:
-                with torch.no_grad():
-                    img = self.vae.vae_encode(img)
-                    # img = img * 0.1
-
-            b, c, h, w = img.shape
-            #sample time, noise, make noisy
-            # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
-            time = torch.linspace(0, self.n_timesteps, b).to(img.device)
-            # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
-            eps = torch.randn_like(img)
-            img_noisy = self.scheduler.add_noise(img, eps, time)
-            pred = self.model(img_noisy, time, label)
-            loss = self.loss(pred, eps, average=True)
-            self.scheduler.set_timesteps(self.n_timesteps)
-            _, x_0 = self.scheduler.step(pred, time, img_noisy)
-
-            # logging
-            for metric_name, metric_value in loss.items():
-                self.log(
-                    f"val/{metric_name}",
-                    metric_value,
-                    sync_dist=True,
-                    on_step=True,
-                    on_epoch=True,
-                )
             # if self.latent_vae:
             #     img = self.vae.vae_decode(img_noisy).detach()
             # self.logger.log_image(
