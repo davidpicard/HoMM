@@ -189,7 +189,7 @@ class DiffusionModule(L.LightningModule):
             # )
 
             # sample images
-            label = torch.zeros_like(label)
+            label = torch.zeros((8,)).to(img.device)
             label[0] = 1 # goldfish
             label[1] = 9 # ostrich
             label[2] = 18 # magpie
@@ -198,9 +198,13 @@ class DiffusionModule(L.LightningModule):
             label[5] = 949 # strawberry
             label[6] = 888 # viaduc
             label[7] = 409 # analog clock
-            gen = torch.Generator(device=img_noisy.device)
+            gen = torch.Generator(device=img.device)
             gen.manual_seed(3407)
-            samples = torch.randn(size=img_noisy.size(), generator=gen, dtype=img_noisy.dtype, layout=img_noisy.layout, device=img_noisy.device)
+            samples = torch.randn(size=(8, self.model.input_dim, self.model.im_size, self.model.im_size),
+                                  generator=gen,
+                                  dtype=img_noisy.dtype,
+                                  layout=img_noisy.layout,
+                                  device=img_noisy.device)
             samples = self.pipeline.sample_cfg(
                 samples,
                 label,
