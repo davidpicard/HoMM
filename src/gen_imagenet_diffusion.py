@@ -3,7 +3,7 @@ import os
 
 import einops
 import torch
-from model.network.imagediffusion import ClassConditionalDiHpp
+from model.network.imagediffusion import ClassConditionalDiHpp, DiHpp_models
 from model.diffusion import DiffusionModule, denormalize
 from model.sampler.sampler import *
 from torchvision.utils import save_image
@@ -35,6 +35,8 @@ parser.add_argument("--output", type=str, default="output")
 parser.add_argument("--sampler", type=str, default="ddim")
 parser.add_argument("--cfg-scheduler", type=str, default="none")
 
+parser.add_argument("--model-name", type=str, default="custom")
+
 args = parser.parse_args()
 
 precision_type = torch.float
@@ -44,7 +46,16 @@ elif precision_type == "fp16":
     precision_type = torch.float16
 
 print("loading model")
-model = ClassConditionalDiHpp(input_dim=4,
+if args.model_name == "DiHpp-S/2":
+    model = DiHpp_models["DiHpp-S/2"]
+elif args.model_name == "DiHpp-B/2":
+    model = DiHpp_models["DiHpp-B/2"]
+elif args.model_name == "DiHpp-L/2":
+    model = DiHpp_models["DiHpp-L/2"]
+elif args.model_name == "DiHpp-XL/2":
+    model = DiHpp_models["DiHpp-XL/2"]
+else:
+    model = ClassConditionalDiHpp(input_dim=4,
                               n_classes=1000,
                               n_timesteps=args.time_emb,
                               im_size=args.size//8,

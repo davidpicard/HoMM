@@ -493,11 +493,11 @@ class ClassConditionalDiHpp(nn.Module):
 
 
 def DiHpp_S_2(**kwargs):
-    return ClassConditionalDiHpp(n_layers=12, dim=384, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+    return ClassConditionalDiHpp(n_layers=12, dim=384, kernel_size=2, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiHpp_S_4(**kwargs):
-    return ClassConditionalDiHpp(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
+    return ClassConditionalDiHpp(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiHpp_B_2(**kwargs):
-    return ClassConditionalDiHpp(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+    return ClassConditionalDiHpp(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiHpp_L_2(**kwargs):
     return ClassConditionalDiHpp(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
 
