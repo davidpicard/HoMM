@@ -500,10 +500,12 @@ def DiHpp_B_2(**kwargs):
     return ClassConditionalDiHpp(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiHpp_L_2(**kwargs):
     return ClassConditionalDiHpp(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
+def DiHpp_XL_2(**kwargs):
+    return ClassConditionalDiHpp(n_layers=28, dim=1152, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
 
 
 DiHpp_models = {
-#    'DiT-XL/2': DiT_XL_2,  'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
+    'DiHpp-XL/2': DiHpp_XL_2,  #'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
     'DiHpp-L/2':  DiHpp_L_2,   # 'DiT-L/4':  DiT_L_4,   'DiT-L/8':  DiT_L_8,
     'DiHpp-B/2':  DiHpp_B_2, #  'DiT-B/4':  DiT_B_4,   'DiT-B/8':  DiT_B_8,
     'DiHpp-S/2':  DiHpp_S_2,   'DiHpp-S/4':  DiHpp_S_4,  # 'DiT-S/8':  DiT_S_8,
