@@ -47,13 +47,17 @@ elif precision_type == "fp16":
 
 print("loading model")
 if args.model_name == "DiHpp-S/2":
+    print("model: DiHpp-S/2")
     model = DiHpp_models["DiHpp-S/2"]
 elif args.model_name == "DiHpp-B/2":
     model = DiHpp_models["DiHpp-B/2"]
+    print("model: DiHpp-B/2")
 elif args.model_name == "DiHpp-L/2":
     model = DiHpp_models["DiHpp-L/2"]
+    print("model: DiHpp-L/2")
 elif args.model_name == "DiHpp-XL/2":
     model = DiHpp_models["DiHpp-XL/2"]
+    print("model: DiHpp-XL/2")
 else:
     model = ClassConditionalDiHpp(input_dim=4,
                               n_classes=1000,
