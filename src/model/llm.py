@@ -46,7 +46,7 @@ class LLMModule(L.LightningModule):
 
         # create causal masks
         b, n = attention_mask.shape
-        masks = torch.tril(torch.ones((self.model.context_length, self.model.context_length))).unsqueeze(0).to(self.device) # b x n x n
+        masks = torch.tril(torch.ones((n, n))).unsqueeze(0).to(self.device) # b x n x n
         masks = masks * attention_mask.unsqueeze(2)
 
         pred = self.model(input_ids, masks, r)[:, 0:n-1, :]
@@ -86,7 +86,7 @@ class LLMModule(L.LightningModule):
 
         # create causal masks
         b, n = attention_mask.shape
-        masks = torch.tril(torch.ones((self.model.context_length, self.model.context_length))).unsqueeze(0).to(self.device) # b x n x n
+        masks = torch.tril(torch.ones((n, n))).unsqueeze(0).to(self.device) # b x n x n
         masks = masks * attention_mask.unsqueeze(2)
 
         pred = self.model(input_ids, masks)[:, 0:n-1, :]

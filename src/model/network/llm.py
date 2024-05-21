@@ -62,7 +62,7 @@ class HLM(nn.Module):
         # self.registers = nn.Parameter(torch.zeros(1, n_registers, dim), requires_grad=True)
         self.layers = nn.ModuleList([HLMLayer(dim, context_length, order, order_expand, ffw_expand, checkpoint_hom=checkpoint_hom) for i in range(n_layers)])
         self.token_emb = nn.Embedding(vocab_size, dim)
-        self.output_proj = nn.Linear(dim, vocab_size, bias=False)
+        self.output_proj = nn.Linear(dim, vocab_size, bias=True)
 
         # pos emb
         self.freqs = nn.Parameter(torch.exp(-2 * np.log(4*context_length) * torch.arange(0, dim//2) / dim), requires_grad=False)
@@ -77,7 +77,7 @@ class HLM(nn.Module):
                     nn.init.zeros_(m.bias)
         self.apply(init_weights_)
         nn.init.zeros_(self.output_proj.weight)
-        # nn.init.constant_(self.output_proj.bias, -np.log(self.context_length))
+        nn.init.constant_(self.output_proj.bias, -np.log(self.context_length))
 
     def forward(self, x, mask, pos_offset=None): # x has size b x seq_length with b always = 1
         # embed ids
