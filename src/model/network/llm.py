@@ -85,7 +85,7 @@ class HLM(nn.Module):
         b, n, d = x_hidden.shape
 
         # add pos embedding
-        pos = torch.arange(0, self.context_length).unsqueeze(0).to(x_hidden.device)
+        pos = torch.arange(0, min(n, self.context_length)).unsqueeze(0).to(x_hidden.device)
         if pos_offset is not None:
             pos = pos + pos_offset.unsqueeze(1).to(pos.device) # b x n
         pos = torch.einsum("bn, d -> bnd", pos, self.freqs)
