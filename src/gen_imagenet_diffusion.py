@@ -100,8 +100,8 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         sampler = DDPMLinearScheduler(args.time_emb, schedule=linear_schedule)
     pipeline = DiTPipeline(model, sampler)
     # pipeline = DiTPipeline(model, AncestralEulerScheduler(args.time_emb))
+    torch.manual_seed(3407)
     for i in tqdm(range(1000)):
-        torch.manual_seed(3407)
         noise = torch.randn((args.n_images_per_class, 4, args.size//8, args.size//8)).to(device)
         label = torch.zeros((args.n_images_per_class), dtype=torch.long).to(device) + i
         if args.n_images_per_class > 25:
