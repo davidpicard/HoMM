@@ -4,14 +4,18 @@ import torch
 def linear_schedule(t):
     return torch.clamp(t, 1e-6, 1.-1e-6)
 
+def sine_schedule(t):
+    t = torch.sin(t * torch.pi / 2)
+    return torch.clamp(t, 1e-6, 1.-1e-6)
+
 def cosine_schedule(t):
-    t = torch.cos((1-t) * torch.pi / 2)
+    t = 1 - torch.cos(t * torch.pi / 2)
     return torch.clamp(t, 1e-6, 1.-1e-6)
 
 def sigmoid_schedule(t):
-    t = torch.sigmoid(-3. + 6*t)
+    t = torch.sigmoid(-2. + 4*t)
     o = torch.tensor(1)
-    t = (t-torch.sigmoid(-3.*o))/(torch.sigmoid(3.*o)-torch.sigmoid(-3.*o))
+    t = (t-torch.sigmoid(-2.*o))/(torch.sigmoid(2.*o)-torch.sigmoid(-2.*o))
     return torch.clamp(t, 1e-6, 1.-1e-6)
     # start = -1
     # end = 3
