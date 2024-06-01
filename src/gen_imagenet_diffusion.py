@@ -37,6 +37,7 @@ parser.add_argument("--cfg-scheduler", type=str, default="none")
 parser.add_argument("--schedule", type=str, default="linear")
 
 parser.add_argument("--model-name", type=str, default="custom")
+parser.add_argument("--compile", type=bool, default=False)
 
 args = parser.parse_args()
 
@@ -102,6 +103,9 @@ elif args.schedule == "cosine":
     print('using cosine schedule')
     schedule = cosine_schedule
 
+if args.compile:
+    print('compiling model')
+    model = torch.compile(model, fullgraph=True, dynamic=False)
 
 print("sampling images...")
 with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
