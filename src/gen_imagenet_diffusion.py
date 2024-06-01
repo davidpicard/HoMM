@@ -34,6 +34,7 @@ parser.add_argument("--cfg", type=float, default=1.5)
 parser.add_argument("--output", type=str, default="output")
 parser.add_argument("--sampler", type=str, default="ddim")
 parser.add_argument("--cfg-scheduler", type=str, default="none")
+parser.add_argument("--schedule", type=str, default="linear")
 
 parser.add_argument("--model-name", type=str, default="custom")
 
@@ -90,14 +91,24 @@ vae.eval()
 
 cfg_scheduler = None
 if args.cfg_scheduler == "linear":
+    print('using linear cfg scheduler')
     cfg_scheduler = linear
+
+schedule = linear_schedule
+if args.schedule == "sigmoid":
+    print('using sigmoid schedule')
+    schedule = sigmoid_schedule
+elif args.schedule == "cosine":
+    print('using cosine schedule')
+    schedule = cosine_schedule
+
 
 print("sampling images...")
 with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
-    sampler = DDIMLinearScheduler(args.time_emb, schedule=linear_schedule)
+    sampler = DDIMLinearScheduler(args.time_emb, schedule=schedule)
     if args.sampler == "ddpm":
         print('using DDPM')
-        sampler = DDPMLinearScheduler(args.time_emb, schedule=linear_schedule)
+        sampler = DDPMLinearScheduler(args.time_emb, schedule=schedule)
     pipeline = DiTPipeline(model, sampler)
     # pipeline = DiTPipeline(model, AncestralEulerScheduler(args.time_emb))
     torch.manual_seed(3407)
