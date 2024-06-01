@@ -36,7 +36,7 @@ parser.add_argument("--sampler", type=str, default="ddim")
 parser.add_argument("--cfg-scheduler", type=str, default="none")
 parser.add_argument("--schedule", type=str, default="linear")
 parser.add_argument("--clip", type=bool, default=False)
-parser.add_argument("--clip-value", type=str, default=1.0)
+parser.add_argument("--clip-value", type=float, default=1.0)
 
 parser.add_argument("--model-name", type=str, default="custom")
 parser.add_argument("--compile", type=bool, default=False)
