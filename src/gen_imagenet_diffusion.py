@@ -35,6 +35,8 @@ parser.add_argument("--output", type=str, default="output")
 parser.add_argument("--sampler", type=str, default="ddim")
 parser.add_argument("--cfg-scheduler", type=str, default="none")
 parser.add_argument("--schedule", type=str, default="linear")
+parser.add_argument("--clip", type=bool, default=False)
+parser.add_argument("--clip-value", type=str, default=1.0)
 
 parser.add_argument("--model-name", type=str, default="custom")
 parser.add_argument("--compile", type=bool, default=False)
@@ -109,10 +111,10 @@ if args.compile:
 
 print("sampling images...")
 with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
-    sampler = DDIMLinearScheduler(args.time_emb, schedule=schedule)
+    sampler = DDIMLinearScheduler(args.time_emb, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)
     if args.sampler == "ddpm":
-        print('using DDPM')
-        sampler = DDPMLinearScheduler(args.time_emb, schedule=schedule)
+        print('using DDPM with clip: {} at {}'.format(args.clip, args.clip_value))
+        sampler = DDPMLinearScheduler(args.time_emb, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)
     pipeline = DiTPipeline(model, sampler)
     # pipeline = DiTPipeline(model, AncestralEulerScheduler(args.time_emb))
     torch.manual_seed(3407)

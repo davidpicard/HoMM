@@ -57,7 +57,8 @@ class DDIMLinearScheduler():
     def __init__(self,
                  n_timesteps,
                  schedule = linear_schedule,
-                 clip_img_pred=False):
+                 clip_img_pred=False,
+                 clip_value = 1.):
         self.train_timesteps = n_timesteps
         self.timesteps = None
         self.schedule = schedule
@@ -79,7 +80,8 @@ class DDIMLinearScheduler():
         sigma = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
         x_0 = (samples - torch.sqrt(sigma) * noise_pred) / torch.sqrt(1 - sigma)
         if self.clip_img_pred:
-            x_0 = x_0.clamp(-1, 1)
+            x_0 = x_0.clamp(-self.clip_value, self.clip_value)
+            noise_pred = (samples - torch.sqrt(1-sigma) * x_0) / torch.sqrt(sigma)
         # recompute sample at previous step
         t = t - self.train_timesteps/self.num_inference_steps
         sigma = self.schedule(t.clamp(0, self.train_timesteps-1)/self.train_timesteps).view(b, 1, 1, 1)
@@ -91,11 +93,13 @@ class DDPMLinearScheduler():
     def __init__(self,
                  n_timesteps,
                  schedule = linear_schedule,
-                 clip_img_pred=False):
+                 clip_img_pred=False,
+                 clip_value = 1.):
         self.train_timesteps = n_timesteps
         self.timesteps = None
         self.schedule = schedule
         self.clip_img_pred = clip_img_pred
+        self.clip_value = clip_value
 
     def add_noise(self, x, noise, t):
         t = torch.clamp(t, 0, self.train_timesteps)
@@ -112,8 +116,9 @@ class DDPMLinearScheduler():
         sigma_now = self.schedule(t.clamp(0, self.train_timesteps - 1) / self.train_timesteps).view(b, 1, 1, 1)
         x_pred = (samples - torch.sqrt(sigma_now) * noise_pred) / torch.sqrt(1-sigma_now)
         if self.clip_img_pred:
-            x_pred = torch.clamp(x_pred, -1, 1)
+            x_pred = torch.clamp(x_pred, -self.clip_value, self.clip_value)
             noise_est = (samples - torch.sqrt(1-sigma_now) * x_pred) / torch.sqrt(sigma_now)
+            # noise_est = noise_pred
         else:
             noise_est = noise_pred
 
