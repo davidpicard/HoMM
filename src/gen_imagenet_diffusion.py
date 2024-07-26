@@ -40,6 +40,8 @@ parser.add_argument("--clip-value", type=float, default=1.0)
 
 parser.add_argument("--model-name", type=str, default="custom")
 parser.add_argument("--compile", type=bool, default=False)
+parser.add_argument("--decoder", type=str, default="vae")
+parser.add_argument("--batch-size", type=int, default=25)
 
 args = parser.parse_args()
 
@@ -78,19 +80,35 @@ class ema_cfg:
     update_after_step = 10000
     update_every = 10
 
-plmodule = DiffusionModule.load_from_checkpoint(args.checkpoint,
-                                                model=model,
-                                                mode="eps",
-                                                loss=None,
-                                                val_sampler=None,
-                                                optimizer_cfg=None,
-                                                lr_scheduler_builder=None,
-                                                latent_vae=True,
-                                                ema_cfg=ema_cfg())
+ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'))
+plmodule = DiffusionModule(model, None, None, None, None, None, torch_compile=False, latent_vae=True, ema_cfg=ema_cfg())
+plmodule.load_state_dict(ckpt['state_dict'], strict=False)
+ckpt = None
 model = plmodule.ema.ema_model.to(device)
 model.eval()
 vae = plmodule.vae.to(device)
 vae.eval()
+pl_module = None
+
+if args.decoder == "consistency":
+    print("using ConsistencyDecoder from OpenAI")
+    from consistencydecoder import ConsistencyDecoder
+    scaling_factor = vae.vae.config.scaling_factor
+    vae = None
+    decoder = ConsistencyDecoder(device=device)  # Model size: 2.49 GB
+    class Decoder():
+        def __init__(self):
+            self.decoder = decoder
+            self.scaling_factor = scaling_factor
+        def vae_decode(self, samples):
+            dec = []
+            for i in range(samples.shape[0]):
+                with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
+                    with torch.no_grad():
+                        img = self.decoder(samples[i:i + 1, ...] / self.scaling_factor) / 2. + 0.5
+                        dec.append(img)
+            return torch.cat(dec)
+    vae = Decoder()
 
 cfg_scheduler = None
 if args.cfg_scheduler == "linear":
@@ -111,44 +129,41 @@ if args.compile:
 
 print("sampling images...")
 with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
-    sampler = DDIMLinearScheduler(args.time_emb, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)
     if args.sampler == "ddpm":
-        print('using DDPM with clip: {} at {}'.format(args.clip, args.clip_value))
-        sampler = DDPMLinearScheduler(args.time_emb, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)
-    pipeline = DiTPipeline(model, sampler)
-    # pipeline = DiTPipeline(model, AncestralEulerScheduler(args.time_emb))
+        print('using DDPM with clip: {} at {} and {} schedule'.format(args.clip, args.clip_value, args.schedule))
+        sampler = DDPMLinearScheduler(model, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)
+    elif args.sampler == "dpm":
+        print('using DPM with clip: {} at {}'.format(args.clip, args.clip_value))
+        sampler = DPMScheduler(model, clip_img_pred=args.clip, clip_value=args.clip_value)
+    else:
+        print('using DDIM with clip: {} at {} and {} schedule'.format(args.clip, args.clip_value, args.schedule))
+        sampler = DDIMLinearScheduler(model, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)
+    pipeline = sampler
     torch.manual_seed(3407)
     for i in tqdm(range(1000)):
         noise = torch.randn((args.n_images_per_class, 4, args.size//8, args.size//8)).to(device)
         label = torch.zeros((args.n_images_per_class), dtype=torch.long).to(device) + i
-        if args.n_images_per_class > 25:
+        if args.n_images_per_class > args.batch_size:
             samples = []
-            for b in range(args.n_images_per_class//25):
-                fr = b*25
-                to = min((b+1)*25, args.n_images_per_class)
-                if args.cfg > 0.:
-                    sample_b = pipeline.sample_cfg(noise[fr:to, ...],
-                                                   class_labels=label[fr:to],
-                                                   cfg=args.cfg,
-                                                   device=device,
-                                                   num_inference_steps=args.n_timesteps,
-                                                   cfg_scheduler=cfg_scheduler)
-                else:
-                    sample_b = pipeline(noise[fr:to, ...], class_labels=label[fr:to], device=device, num_inference_steps=args.n_timesteps)
+            for b in range(args.n_images_per_class//args.batch_size):
+                fr = b*args.batch_size
+                to = min((b+1)*args.batch_size, args.n_images_per_class)
+                sample_b = pipeline.sample(noise[fr:to, ...],
+                                           class_labels=label[fr:to],
+                                           cfg=args.cfg,
+                                           num_inference_steps=args.n_timesteps,
+                                           cfg_scheduler=cfg_scheduler)
+                sample_b = vae.vae_decode(sample_b).detach()
                 samples.append(sample_b)
             samples = torch.cat(samples, dim=0)
         else:
-            if args.cfg > 0.:
-                samples = pipeline.sample_cfg(noise,
-                                               class_labels=label,
-                                               cfg=args.cfg,
-                                               device=device,
-                                               num_inference_steps=args.n_timesteps,
-                                               cfg_scheduler=cfg_scheduler)
-            else:
-                samples = pipeline(noise, class_labels=label, device=device,
-                                    num_inference_steps=args.n_timesteps)
-        samples = vae.vae_decode(samples).detach()
+            samples = pipeline.sample(noise,
+                                       class_labels=label,
+                                       cfg=args.cfg,
+                                       num_inference_steps=args.n_timesteps,
+                                       cfg_scheduler=cfg_scheduler)
+            samples = vae.vae_decode(samples).detach()
+
         # samples = einops.rearrange(samples, "b c h w -> b h w c")
         os.makedirs("{}/{}".format(args.output, i), exist_ok=True)
         for k in range(args.n_images_per_class):

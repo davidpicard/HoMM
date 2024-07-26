@@ -5,7 +5,7 @@ import torch.nn as nn
 from diffusers import AutoencoderKL
 from torchvision.transforms import transforms
 
-from .sampler.sampler import DiTPipeline, DDIMLinearScheduler
+from .sampler.sampler import DPMScheduler
 
 denormalize = transforms.Normalize(
     mean=[-1],
@@ -82,11 +82,10 @@ class DiffusionModule(L.LightningModule):
 
         # noise scheduler
         self.n_timesteps = model.n_timesteps
-        self.scheduler = DDIMLinearScheduler(n_timesteps=self.n_timesteps)
         if ema_cfg is not None:
-            self.pipeline = DiTPipeline(model=self.ema.ema_model, scheduler=self.scheduler)
+            self.pipeline = DPMScheduler(model=self.ema.ema_model)
         else:
-            self.pipeline = DiTPipeline(model=model, scheduler=self.scheduler)
+            self.pipeline = DPMScheduler(model=self.ema.ema_model)
 
         # Set to False because we don't load the vae
         self.strict_loading = False
@@ -154,8 +153,6 @@ class DiffusionModule(L.LightningModule):
         img_noisy = self.scheduler.add_noise(img, eps, time)
         pred = self.model(img_noisy, time, label)
         loss = self.loss(pred, eps, average=True)
-        self.scheduler.set_timesteps(self.n_timesteps)
-        _, x_0 = self.scheduler.step(pred, time, img_noisy)
 
         # logging
         for metric_name, metric_value in loss.items():
@@ -206,12 +203,11 @@ class DiffusionModule(L.LightningModule):
                                   dtype=img_noisy.dtype,
                                   layout=img_noisy.layout,
                                   device=img_noisy.device)
-            samples = self.pipeline.sample_cfg(
+            samples = self.pipeline.sample(
                 samples,
                 label,
                 cfg=4,
                 num_inference_steps=50,
-                device=img.device
             )
             if self.latent_vae:
                 samples = self.vae.vae_decode(samples).detach()
