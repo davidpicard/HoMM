@@ -20,7 +20,16 @@ if "pp" in args.model_name:
     dihpp=True
 else:
     model = DiH_models[args.model_name](n_classes=1000, input_dim=4, im_size=args.size//8, n_timesteps=250)
-module = DiffusionModule(model, None, None, None, None, None, False, False)
+
+
+class ema:
+    def __init__(self):
+        self.beta = 999
+        self.update_after_step = 10000
+        self.update_every = 10
+ema_cfg = ema()
+
+module = DiffusionModule(model, None, None, None, None, None, False, False, ema_cfg)
 
 print('loading ckpt')
 ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'))
@@ -55,6 +64,10 @@ if dihpp:
 
     ckpt['state_dict']['model.cond_pos_emb'] = cond_pos_up
     ckpt['state_dict']['ema.ema_model.cond_pos_emb'] = cond_pos_up
+
+# reset step and epoch
+ckpt['epoch'] = 0
+ckpt['global_step'] = 0
 
 print('saving new checkpoint')
 torch.save(ckpt, args.new_checkpoint)

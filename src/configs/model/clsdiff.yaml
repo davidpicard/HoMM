@@ -4,7 +4,6 @@ defaults:
   - loss: MSE
   - optimizer: adamw
   - lr_scheduler: warmup_cosine_decay
-  - sampler: ddim
   - ema: constant
 
 name: HoMMClsDiff
@@ -12,11 +11,11 @@ instance:
   _target_: model.diffusion.DiffusionModule
   model: ${model.network}
   mode: "eps"
-  val_sampler: ${model.sampler}
   loss: ${model.loss}
   optimizer_cfg: ${model.optimizer}
   lr_scheduler_builder: ${model.lr_scheduler}
   torch_compile: false
-  latent_vae: true
+  latent_encode: false
+  latent_decode: true
   ema_cfg: ${model.ema}
 

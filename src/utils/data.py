@@ -100,6 +100,24 @@ def build_imagefolder(data_dir, num_classes, size=224, additional_transforms=Non
     return train, val
 
 
+def build_imagenet_mds(data_dir, quantization_factor=8.):
+    from streaming import StreamingDataset
+    class VAEEncodedDataset(StreamingDataset):
+        def __init__(self,
+                     local: str,
+                     ) -> None:
+            super().__init__(local=local, shuffle=True, batch_size=1)
+            self.transform = None
+
+        def __getitem__(self, idx: int):
+            obj = super().__getitem__(idx)
+            x = torch.tensor(obj['image']).float()/quantization_factor
+            y = torch.nn.functional.one_hot(torch.tensor(obj['class']), num_classes=1000)
+            return x, y
+
+    return VAEEncodedDataset(data_dir), VAEEncodedDataset(data_dir)
+
+
 # from datasets import load_dataset
 from torch.utils.data import Dataset, TensorDataset, IterableDataset
 import json
@@ -154,7 +172,7 @@ def build_redpajamasv2(dir, context_length):
                 with gzip.open(jsongz, "rt") as f:
                     for row in f:
                         entry = json.loads(row)
-                        if entry["language_score"] < 0.9: # skip poor texts
+                        if entry["language_score"] < 0.85: # skip poor texts
                             continue
                         txt = entry['raw_content']
                         r = 0

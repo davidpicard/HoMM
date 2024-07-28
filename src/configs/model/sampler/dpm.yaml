@@ -1,0 +1,3 @@
+_target_: model.sampler.sampler.DPMScheduler
+model: model.network
+clip_img_pred: true

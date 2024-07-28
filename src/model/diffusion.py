@@ -47,9 +47,9 @@ class DiffusionModule(L.LightningModule):
             optimizer_cfg,
             lr_scheduler_builder,
             # train_batch_preprocess,
-            val_sampler,
             torch_compile=False,
-            latent_vae=False,
+            latent_encode=False,
+            latent_decode=False,
             ema_cfg=None
         ):
         super().__init__()
@@ -63,9 +63,9 @@ class DiffusionModule(L.LightningModule):
         self.optimizer_cfg = optimizer_cfg
         self.lr_scheduler_builder = lr_scheduler_builder
         # self.train_batch_preprocess = train_batch_preprocess
-        self.val_sampler = val_sampler
-        self.latent_vae = latent_vae
-        if latent_vae:
+        self.latent_encode = latent_encode
+        self.latent_decode = latent_decode
+        if latent_encode or latent_decode:
             self.vae = VAE()
 
         #ema
@@ -83,9 +83,9 @@ class DiffusionModule(L.LightningModule):
         # noise scheduler
         self.n_timesteps = model.n_timesteps
         if ema_cfg is not None:
-            self.pipeline = DPMScheduler(model=self.ema.ema_model)
+            self.sampler = DPMScheduler(model=self.ema.ema_model)
         else:
-            self.pipeline = DPMScheduler(model=self.ema.ema_model)
+            self.sampler = DPMScheduler(model=self.ema.ema_model)
 
         # Set to False because we don't load the vae
         self.strict_loading = False
@@ -96,7 +96,7 @@ class DiffusionModule(L.LightningModule):
 
     def training_step(self, batch, batch_idx):
         img, label = batch
-        if self.latent_vae:
+        if self.latent_encode:
             with torch.no_grad():
                 img = self.vae.vae_encode(img)
 
@@ -113,7 +113,7 @@ class DiffusionModule(L.LightningModule):
         # time = (time*self.n_timesteps).to(img.device)
         time = torch.randint(0, self.n_timesteps, (b,)).to(img.device)
         eps = torch.randn_like(img)
-        img = self.scheduler.add_noise(img, eps, time)
+        img = self.sampler.add_noise(img, eps, time)
 
         pred = self.model(img, time, label)
         loss = {"loss": ((pred - eps)**2).mean()}
@@ -139,7 +139,7 @@ class DiffusionModule(L.LightningModule):
         # img = img[0:8, ...]
         # label = label[0:8, ...].argmax(dim=1)
 
-        if self.latent_vae:
+        if self.latent_encode:
             with torch.no_grad():
                 img = self.vae.vae_encode(img)
                 # img = img * 0.1
@@ -150,7 +150,7 @@ class DiffusionModule(L.LightningModule):
         time = torch.linspace(0, self.n_timesteps, b).to(img.device)
         # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
         eps = torch.randn_like(img)
-        img_noisy = self.scheduler.add_noise(img, eps, time)
+        img_noisy = self.sampler.add_noise(img, eps, time)
         pred = self.model(img_noisy, time, label)
         loss = self.loss(pred, eps, average=True)
 
@@ -187,7 +187,8 @@ class DiffusionModule(L.LightningModule):
             # )
 
             # sample images
-            label = torch.zeros((8,)).long().to(img.device)
+            bs = 8
+            label = torch.zeros((bs,)).long().to(img.device)
             label[0] = 1 # goldfish
             label[1] = 9 # ostrich
             label[2] = 18 # magpie
@@ -198,25 +199,27 @@ class DiffusionModule(L.LightningModule):
             label[7] = 409 # analog clock
             gen = torch.Generator(device=img.device)
             gen.manual_seed(3407)
-            samples = torch.randn(size=(8, self.model.input_dim, self.model.im_size, self.model.im_size),
+            samples = torch.randn(size=(bs, self.model.input_dim, self.model.im_size, self.model.im_size),
                                   generator=gen,
                                   dtype=img_noisy.dtype,
                                   layout=img_noisy.layout,
                                   device=img_noisy.device)
-            samples = self.pipeline.sample(
+            samples = self.sampler.sample(
                 samples,
                 label,
                 cfg=4,
                 num_inference_steps=50,
             )
-            if self.latent_vae:
+            if self.latent_decode:
                 samples = self.vae.vae_decode(samples).detach()
             self.logger.log_image(
                 key="samples",
                 images=[samples[0], samples[1], samples[2], samples[3],
-                        samples[4], samples[5], samples[6], samples[7]],
+                        samples[4], samples[5], samples[6], samples[7]
+                        ],
                 caption=["goldfish", "ostrich", "magpie", "malamute",
-                         "ice cream", "strawberry", "viaduc", "analog clock"]
+                         "ice cream", "strawberry", "viaduc", "analog clock"
+                         ]
             )
 
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
