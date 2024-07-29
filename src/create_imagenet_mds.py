@@ -17,6 +17,7 @@ parser.add_argument("--output", type=str, required=True)
 parser.add_argument("--device", type=str, default="cuda")
 parser.add_argument("--precision", type=str, default="bf16")
 parser.add_argument("--batch-size", type=int, default=4)
+parser.add_argument("--workers", type=int, default=8)
 parser.add_argument("--size", type=int, default=512)
 parser.add_argument("--quantization-scale", type=int, default=8)
 args = parser.parse_args()
@@ -41,7 +42,7 @@ train = ImageNet(
     args.imagenet_path,
     transform=transform_train,
 )
-train = DataLoader(train, batch_size=args.batch_size, shuffle=False, num_workers=2)
+train = DataLoader(train, batch_size=args.batch_size, shuffle=False, num_workers=args.workers)
 
 ## vae
 vae = AutoencoderKL.from_pretrained("runwayml/stable-diffusion-v1-5", device="cuda:0", subfolder="vae",
