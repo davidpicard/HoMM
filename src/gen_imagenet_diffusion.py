@@ -168,5 +168,5 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         # samples = einops.rearrange(samples, "b c h w -> b h w c")
         os.makedirs("{}/{}".format(args.output, i), exist_ok=True)
         for k in range(args.n_images_per_class):
-            save_image(samples[k], "{}/{}/{}.{}}".format(args.output, i, k, args.format))
+            save_image(samples[k], "{}/{}/{}.{}".format(args.output, i, k, args.format))
 
