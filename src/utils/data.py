@@ -115,7 +115,8 @@ def build_imagenet_mds(data_dir, quantization_factor=8.):
             y = torch.nn.functional.one_hot(torch.tensor(obj['class']), num_classes=1000)
             return x, y
 
-    return VAEEncodedDataset(data_dir), VAEEncodedDataset(data_dir)
+    train = VAEEncodedDataset(data_dir)
+    return train, train
 
 
 # from datasets import load_dataset
