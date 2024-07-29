@@ -116,7 +116,8 @@ def build_imagenet_mds(data_dir, quantization_factor=8.):
             return x, y
 
     train = VAEEncodedDataset(data_dir)
-    return train, train
+    val = VAEEncodedDataset(data_dir)
+    return train, val
 
 
 # from datasets import load_dataset
