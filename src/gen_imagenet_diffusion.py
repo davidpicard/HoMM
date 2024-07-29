@@ -42,6 +42,7 @@ parser.add_argument("--model-name", type=str, default="custom")
 parser.add_argument("--compile", type=bool, default=False)
 parser.add_argument("--decoder", type=str, default="vae")
 parser.add_argument("--batch-size", type=int, default=25)
+parser.add_argument("--format", type=str, default="png")
 
 args = parser.parse_args()
 
@@ -167,5 +168,5 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         # samples = einops.rearrange(samples, "b c h w -> b h w c")
         os.makedirs("{}/{}".format(args.output, i), exist_ok=True)
         for k in range(args.n_images_per_class):
-            save_image(samples[k], "{}/{}/{}.jpg".format(args.output, i, k))
+            save_image(samples[k], "{}/{}/{}.{}}".format(args.output, i, k, args.format))
 
