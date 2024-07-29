@@ -82,7 +82,7 @@ class ema_cfg:
     update_every = 10
 
 ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'))
-plmodule = DiffusionModule(model, None, None, None, None, None, torch_compile=False, latent_vae=True, ema_cfg=ema_cfg())
+plmodule = DiffusionModule(model, None, None, None, None, None, latent_encode=False, latent_decode=True, ema_cfg=ema_cfg())
 plmodule.load_state_dict(ckpt['state_dict'], strict=False)
 ckpt = None
 model = plmodule.ema.ema_model.to(device)
