@@ -45,8 +45,6 @@ def train(cfg):
 
     seed_everything(cfg.seed)
 
-    datamodule = hydra.utils.instantiate(cfg.data.datamodule)
-
     checkpoint_callback = hydra.utils.instantiate(cfg.checkpoints)
 
     progress_bar = hydra.utils.instantiate(cfg.progress_bar)
@@ -101,6 +99,7 @@ def train(cfg):
     if cfg.logger._target_ == "pytorch_lightning.loggers.wandb.WandbLogger":
         logger.experiment.watch(model, log="all", log_graph=True, log_freq=100)
 
+    datamodule = hydra.utils.instantiate(cfg.data.datamodule)
     trainer.fit(model, datamodule, ckpt_path=ckpt_path)
 
 
