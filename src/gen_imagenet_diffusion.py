@@ -37,6 +37,7 @@ parser.add_argument("--cfg-scheduler", type=str, default="none")
 parser.add_argument("--schedule", type=str, default="linear")
 parser.add_argument("--clip", type=bool, default=False)
 parser.add_argument("--clip-value", type=float, default=1.0)
+parser.add_argument("--start", type=int, default=0)
 
 parser.add_argument("--model-name", type=str, default="custom")
 parser.add_argument("--compile", type=bool, default=False)
@@ -141,7 +142,7 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
         sampler = DDIMLinearScheduler(model, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)
     pipeline = sampler
     torch.manual_seed(3407)
-    for i in tqdm(range(1000)):
+    for i in tqdm(range(args.start, 1000, 1)):
         noise = torch.randn((args.n_images_per_class, 4, args.size//8, args.size//8)).to(device)
         label = torch.zeros((args.n_images_per_class), dtype=torch.long).to(device) + i
         if args.n_images_per_class > args.batch_size:
