@@ -100,13 +100,16 @@ def build_imagefolder(data_dir, num_classes, size=224, additional_transforms=Non
     return train, val
 
 
-def build_imagenet_mds(data_dir, quantization_factor=8.):
+def build_imagenet_mds(data_dir, batch_size, quantization_factor=8.):
     from streaming import StreamingDataset
+    import os, random
+    print(f"reading MDS imagenet from {data_dir} with batch_size {batch_size}")
     class VAEEncodedDataset(StreamingDataset):
         def __init__(self,
-                     local: str,
+                     tmp: str,
+                     local: str
                      ) -> None:
-            super().__init__(local=local, shuffle=True, batch_size=1)
+            super().__init__(local=tmp, remote=local, shuffle=True, batch_size=batch_size, cache_limit="2gb")
             self.transform = None
 
         def __getitem__(self, idx: int):
@@ -115,8 +118,10 @@ def build_imagenet_mds(data_dir, quantization_factor=8.):
             y = torch.nn.functional.one_hot(torch.tensor(obj['class']), num_classes=1000)
             return x, y
 
-    train = VAEEncodedDataset(data_dir)
-    val = VAEEncodedDataset(data_dir)
+    tmp = f"{os.environ.get('MDS_TMP', '.')}/tmp/{os.environ.get('HOSTNAME', '')}_{os.getpid()}_{os.environ.get('LOCAL_RANK',0)}_train_{random.randint(0, 999999)}"
+    train = VAEEncodedDataset(tmp, data_dir)
+    tmp = f"{os.environ.get('MDS_TMP', '.')}/tmp/{os.environ.get('HOSTNAME', '')}_{os.getpid()}_{os.environ.get('LOCAL_RANK',0)}_val_{random.randint(0, 999999)}"
+    val = VAEEncodedDataset(tmp, data_dir)
     return train, val
 
 

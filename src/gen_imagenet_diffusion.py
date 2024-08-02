@@ -4,7 +4,7 @@ import os
 import einops
 import torch
 from model.network.imagediffusion import ClassConditionalDiHpp, DiHpp_models
-from model.diffusion import DiffusionModule, denormalize
+from model.diffusion import DiffusionModule, denormalize, VAE
 from model.sampler.sampler import *
 from torchvision.utils import save_image
 from tqdm import tqdm
@@ -88,7 +88,7 @@ plmodule.load_state_dict(ckpt['state_dict'], strict=False)
 ckpt = None
 model = plmodule.ema.ema_model.to(device)
 model.eval()
-vae = plmodule.vae.to(device)
+vae = VAE().to(device)
 vae.eval()
 pl_module = None
 

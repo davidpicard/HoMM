@@ -65,7 +65,7 @@ class DiffusionModule(L.LightningModule):
         # self.train_batch_preprocess = train_batch_preprocess
         self.latent_encode = latent_encode
         self.latent_decode = latent_decode
-        if latent_encode or latent_decode:
+        if latent_encode:
             self.vae = VAE()
 
         #ema
@@ -164,63 +164,63 @@ class DiffusionModule(L.LightningModule):
                 on_epoch=True,
             )
 
-        if self.global_rank == 0:
-            # if self.latent_vae:
-            #     img = self.vae.vae_decode(img_noisy).detach()
-            # self.logger.log_image(
-            #     key="image_input",
-            #     images=[img[0], img[1], img[2], img[3],
-            #             img[4], img[5], img[6], img[7]]
-            # )
-            # if not self.latent_vae:
-            #     self.logger.log_image(
-            #         key="noise_predictions",
-            #         images=[pred[0], pred[1], pred[2], pred[3],
-            #                 pred[4], pred[5], pred[6], pred[7]]
-            #     )
-            # if self.latent_vae:
-            #     x_0 = self.vae.vae_decode(x_0).detach()
-            # self.logger.log_image(
-            #     key="image_predictions",
-            #     images=[x_0[0], x_0[1], x_0[2], x_0[3],
-            #             x_0[4], x_0[5], x_0[6], x_0[7]]
-            # )
-
-            # sample images
-            bs = 8
-            label = torch.zeros((bs,)).long().to(img.device)
-            label[0] = 1 # goldfish
-            label[1] = 9 # ostrich
-            label[2] = 18 # magpie
-            label[3] = 249 # malamut
-            label[4] = 928 # ice cream
-            label[5] = 949 # strawberry
-            label[6] = 888 # viaduc
-            label[7] = 409 # analog clock
-            gen = torch.Generator(device=img.device)
-            gen.manual_seed(3407)
-            samples = torch.randn(size=(bs, self.model.input_dim, self.model.im_size, self.model.im_size),
-                                  generator=gen,
-                                  dtype=img_noisy.dtype,
-                                  layout=img_noisy.layout,
-                                  device=img_noisy.device)
-            samples = self.sampler.sample(
-                samples,
-                label,
-                cfg=4,
-                num_inference_steps=50,
-            )
-            if self.latent_decode:
-                samples = self.vae.vae_decode(samples).detach()
-            self.logger.log_image(
-                key="samples",
-                images=[samples[0], samples[1], samples[2], samples[3],
-                        samples[4], samples[5], samples[6], samples[7]
-                        ],
-                caption=["goldfish", "ostrich", "magpie", "malamute",
-                         "ice cream", "strawberry", "viaduc", "analog clock"
-                         ]
-            )
+        # if self.global_rank == 0:
+        #     # if self.latent_vae:
+        #     #     img = self.vae.vae_decode(img_noisy).detach()
+        #     # self.logger.log_image(
+        #     #     key="image_input",
+        #     #     images=[img[0], img[1], img[2], img[3],
+        #     #             img[4], img[5], img[6], img[7]]
+        #     # )
+        #     # if not self.latent_vae:
+        #     #     self.logger.log_image(
+        #     #         key="noise_predictions",
+        #     #         images=[pred[0], pred[1], pred[2], pred[3],
+        #     #                 pred[4], pred[5], pred[6], pred[7]]
+        #     #     )
+        #     # if self.latent_vae:
+        #     #     x_0 = self.vae.vae_decode(x_0).detach()
+        #     # self.logger.log_image(
+        #     #     key="image_predictions",
+        #     #     images=[x_0[0], x_0[1], x_0[2], x_0[3],
+        #     #             x_0[4], x_0[5], x_0[6], x_0[7]]
+        #     # )
+        #
+        #     # sample images
+        #     bs = 8
+        #     label = torch.zeros((bs,)).long().to(img.device)
+        #     label[0] = 1 # goldfish
+        #     label[1] = 9 # ostrich
+        #     label[2] = 18 # magpie
+        #     label[3] = 249 # malamut
+        #     label[4] = 928 # ice cream
+        #     label[5] = 949 # strawberry
+        #     label[6] = 888 # viaduc
+        #     label[7] = 409 # analog clock
+        #     gen = torch.Generator(device=img.device)
+        #     gen.manual_seed(3407)
+        #     samples = torch.randn(size=(bs, self.model.input_dim, self.model.im_size, self.model.im_size),
+        #                           generator=gen,
+        #                           dtype=img_noisy.dtype,
+        #                           layout=img_noisy.layout,
+        #                           device=img_noisy.device)
+        #     samples = self.sampler.sample(
+        #         samples,
+        #         label,
+        #         cfg=4,
+        #         num_inference_steps=50,
+        #     )
+        #     if self.latent_decode:
+        #         samples = self.vae.vae_decode(samples).detach()
+        #     self.logger.log_image(
+        #         key="samples",
+        #         images=[samples[0], samples[1], samples[2], samples[3],
+        #                 samples[4], samples[5], samples[6], samples[7]
+        #                 ],
+        #         caption=["goldfish", "ostrich", "magpie", "malamute",
+        #                  "ice cream", "strawberry", "viaduc", "analog clock"
+        #                  ]
+        #     )
 
     def optimizer_step(self, epoch, batch_idx, optimizer, optimizer_closure):
         if hasattr(self, "do_optimizer_step") and not self.do_optimizer_step:
