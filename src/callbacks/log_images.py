@@ -12,6 +12,7 @@ class LogGenImage(Callback):
         super().__init__()
         self.log_every_n_steps = log_every_n_steps
         self.vae = VAE()
+        self.ready = True
 
     def on_sanity_check_start(self, trainer, pl_module):
         self.ready = False
