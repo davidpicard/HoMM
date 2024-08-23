@@ -42,7 +42,8 @@ print('rescaling {} to {} (scale: {})'.format(args.size, args.new_size, scale))
 pos = model.pos_emb
 print('expanding positional embedding (old shape: {})'.format(pos.shape))
 pos = einops.rearrange(pos, "b (h w) d -> b d h w", h=args.size//8)
-pos_up = torch.nn.functional.interpolate(pos, scale_factor=scale, mode='bilinear')
+pos_up = torch.nn.functional.interpolate(pos, scale_factor=scale, mode='nearest-exact')
+pos_up = pos_up + 0.01*torch.randn_like(pos_up)
 pos_up = einops.rearrange(pos_up, "b d h w -> b (h w) d")
 print('done (new shape: {})'.format(pos_up.shape))
 
@@ -57,7 +58,8 @@ if dihpp:
     pos = cond_pos[:, model.n_registers:, :]
     print('cond pos emb after removing registers: {}'.format(pos.shape))
     pos = einops.rearrange(pos, "b (h w) d -> b d h w", h=args.size//8)
-    pos_up = torch.nn.functional.interpolate(pos, scale_factor=scale, mode='bilinear')
+    pos_up = torch.nn.functional.interpolate(pos, scale_factor=scale, mode='nearest-exact')
+    pos_up = pos_up + 0.01*torch.randn_like(pos_up)
     pos_up = einops.rearrange(pos_up, "b d h w -> b (h w) d")
     cond_pos_up = torch.cat([cond_pos_r, pos_up], dim=1)
     print('done (new shape: {})'.format(cond_pos_up.shape))
