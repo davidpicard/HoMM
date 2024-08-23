@@ -109,7 +109,7 @@ def build_imagenet_mds(data_dir, batch_size, quantization_factor=8.):
                      tmp: str,
                      local: str
                      ) -> None:
-            super().__init__(local=tmp, remote=local, shuffle=True, batch_size=batch_size, cache_limit="2gb")
+            super().__init__(local=tmp, remote=local, shuffle=True, batch_size=batch_size, cache_limit="2gb", shuffle_block_size=16384)
             self.transform = None
 
         def __getitem__(self, idx: int):
