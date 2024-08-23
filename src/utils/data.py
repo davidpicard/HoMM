@@ -102,7 +102,7 @@ def build_imagefolder(data_dir, num_classes, size=224, additional_transforms=Non
 
 def build_imagenet_mds(data_dir, batch_size, quantization_factor=8.):
     from streaming import StreamingDataset
-    import os, random
+    import os, random, threading
     print(f"reading MDS imagenet from {data_dir} with batch_size {batch_size}")
     class VAEEncodedDataset(StreamingDataset):
         def __init__(self,
@@ -118,7 +118,7 @@ def build_imagenet_mds(data_dir, batch_size, quantization_factor=8.):
             y = torch.nn.functional.one_hot(torch.tensor(obj['class']), num_classes=1000)
             return x, y
 
-    tmp = f"{os.environ.get('MDS_TMP', '.')}/tmp/{os.environ.get('HOSTNAME', '')}_{os.getpid()}_{os.environ.get('LOCAL_RANK',0)}_train_{random.randint(0, 999999)}"
+    tmp = f"{os.environ.get('MDS_TMP', '.')}/tmp/{os.environ.get('HOSTNAME', '')}_{threading.get_ident()}_{os.environ.get('LOCAL_RANK',0)}_train_{random.randint(0, 999999)}"
     train = VAEEncodedDataset(tmp, data_dir)
     tmp = f"{os.environ.get('MDS_TMP', '.')}/tmp/{os.environ.get('HOSTNAME', '')}_{os.getpid()}_{os.environ.get('LOCAL_RANK',0)}_val_{random.randint(0, 999999)}"
     val = VAEEncodedDataset(tmp, data_dir)
