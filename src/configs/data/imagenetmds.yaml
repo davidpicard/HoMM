@@ -11,7 +11,7 @@ dataset_builder:
   _partial_: true
   _target_: utils.data.build_imagenet_mds
   data_dir: ${data_dir}/imagenet
-  batch_size: ${eval:'${data.full_batch_size} / ( ${computer.num_nodes} * ${computer.devices} )'}
+  batch_size: ${eval:'${data.full_batch_size}/(${computer.num_nodes}*${computer.devices})'}
 
 datamodule:
   _target_: utils.datamodule.ImageDataModule

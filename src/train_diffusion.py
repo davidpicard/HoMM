@@ -8,6 +8,7 @@ from lightning.pytorch import seed_everything
 from pathlib import Path
 
 from omegaconf import OmegaConf
+OmegaConf.register_new_resolver("eval", eval)
 import torch
 
 from callbacks.fix_nans import FixNANinGrad
