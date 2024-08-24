@@ -19,7 +19,7 @@ parser.add_argument("--precision", type=str, default="bf16")
 parser.add_argument("--batch-size", type=int, default=4)
 parser.add_argument("--workers", type=int, default=8)
 parser.add_argument("--size", type=int, default=512)
-parser.add_argument("--quantization-scale", type=float, default=1.5)
+parser.add_argument("--quantization-scale", type=float, default=8.0)
 parser.add_argument("--chunk-size", type=int, default=10000)
 args = parser.parse_args()
 
@@ -55,7 +55,7 @@ for p in vae.parameters():
 
 
 class TarWriter():
-    def __init__(self, dirname, chunk_size=10000, quantization_scale=1.5):
+    def __init__(self, dirname, chunk_size=10000, quantization_scale=8.0):
         import os, io, tarfile, json
         self.dir = dirname
         self.chunks_size = chunk_size
@@ -111,8 +111,8 @@ for img, lbl in tqdm(train):
     lbl = torch.cat([lbl, lbl])
     with torch.autocast(device_type=args.device, dtype=precision_type, enabled=True):
         dist = vae.encode(img).latent_dist
-        latent_mean = dist.mean
-        latent_std = dist.std
+        latent_mean = dist.mean * vae.config.scaling_factor
+        latent_std = dist.std * vae.config.scaling_factor
     max_m = latent_mean.abs().max() if latent_mean.abs().max() > max_m else max_m
     max_s = latent_std.abs().max() if latent_std.abs().max() > max_s else max_s
     latent_meanu8 = (latent_mean * args.quantization_scale).clamp(-127, 127).to(torch.int8)
@@ -125,10 +125,10 @@ for img, lbl in tqdm(train):
         buffer.seek(0)
         out.add_sample(name, buffer)
         count += 1
-    #     if count >= 25000:
-    #         break
-    # if count >= 25000:
-    #     break
+        if count >= 1000:
+            break
+    if count >= 1000:
+        break
 out.close()
 print(f"Finished with max_m: {max_m} max_s: {max_s}")
 

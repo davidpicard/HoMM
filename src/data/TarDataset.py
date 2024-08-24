@@ -113,10 +113,10 @@ if __name__ == "__main__":
 
         samples = samples.to("cuda")
         with torch.autocast(device_type="cuda", dtype=torch.float, enabled=True):
-            dec = vae.decode(samples).sample
+            dec = vae.decode(samples / vae.config.scaling_factor).sample
 
         imgs = dec.clamp(-1., 1.)*0.5+0.5
         plt.imshow(einops.rearrange(imgs.cpu(), "(k b) c h w -> (k h) (b w) c", k=2))
-        plt.title(str(l))
+        plt.title(str(l.argmax(dim=1)))
         plt.show()
         plt.pause(0.1)
