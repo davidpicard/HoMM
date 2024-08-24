@@ -125,10 +125,10 @@ for img, lbl in tqdm(train):
         buffer.seek(0)
         out.add_sample(name, buffer)
         count += 1
-        if count >= 1000:
-            break
-    if count >= 1000:
-        break
+    #     if count >= 1000:
+    #         break
+    # if count >= 1000:
+    #     break
 out.close()
 print(f"Finished with max_m: {max_m} max_s: {max_s}")
 
