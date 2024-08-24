@@ -1,0 +1,22 @@
+defaults:
+  - _self_
+
+full_batch_size: 128
+full_val_batch_size: 200
+size: 512
+num_classes: 1000
+name: Imagenet-Tar
+
+dataset_builder:
+  _partial_: true
+  _target_: data.TarDataset.build_imagenet_tar
+  data_dir: ${data_dir}/imagenet
+
+datamodule:
+  _target_: utils.datamodule.ImageDataModule
+  dataset_builder: ${data.dataset_builder}
+  full_batch_size: ${data.full_batch_size}
+  full_val_batch_size: ${data.full_batch_size}
+  num_workers: ${computer.num_workers}
+  num_nodes: ${computer.num_nodes}
+  num_devices: ${computer.devices}
