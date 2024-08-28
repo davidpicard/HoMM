@@ -28,6 +28,17 @@ def po4(x: torch.Tensor):
     h4 = h4 * h3
     return torch.cat([h1, h2, h3, h4], dim=-1)
 
+
+def mask_mixer(h, mask):
+    return (h * mask.unsqueeze(-1)).sum(dim=1, keepdims=True)/(1.e-7 + mask.unsqueeze(-1).sum(dim=1, keepdims=True))
+
+
+def full_mask_mixer(h, mask):
+    mask = mask.type(h.dtype)
+    h = torch.einsum('bnd, bmn -> bmd', h, mask)  # b batch, n context tokens, m query tokens, d dim
+    h = h / (1.e-7 + mask.sum(dim=2, keepdims=True))
+    return h
+
 def high_order_aggregation_(x: torch.Tensor, k: int, mask=None):
     if k == 2:
         h = po2(x)
@@ -44,11 +55,9 @@ def high_order_aggregation_(x: torch.Tensor, k: int, mask=None):
         h = h.mean(dim=1, keepdims=True)
     else:
         if mask.dim()==2:
-            h = (h * mask.unsqueeze(-1)).sum(dim=1, keepdims=True)/mask.unsqueeze(-1).sum(dim=1, keepdims=True)
+            h = mask_mixer(h, mask)
         elif mask.dim() ==3:
-            mask = mask.type(h.dtype)
-            h = torch.einsum('bnd, bmn -> bmd', h, mask)  # b batch, n context tokens, m query tokens, d dim
-            h = h/(1+mask.sum(dim=2, keepdims=True))
+            h = full_mask_mixer(h, mask)
         else:
             raise Exception('unsupported dim for mask (should be 2,3 or None)')
     return h
