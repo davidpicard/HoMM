@@ -1,3 +1,4 @@
-_target_: model.sampler.sampler.DDIM
-n_steps: 250
+_target_: model.sampler.sampler.DDIMLinearScheduler
+n_timesteps: 250
 schedule: model.sampler.linear_schedule
+clip_img_pred: true

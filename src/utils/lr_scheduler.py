@@ -72,3 +72,61 @@ class WarmupCosineDecayLR:
 
     def load_state_dict(self, state_dict):
         self.__dict__.update(state_dict)
+
+
+class LinearDecayLR:
+    def __init__(self, optimizer, total_steps):
+        self.optimizer = optimizer
+        self.total_steps = total_steps
+        self.base_lr = None
+
+    def get_lr(self, lr, step):
+        return lr * (1 - min(step / max(self.total_steps, 1), 1.0))
+
+    def step(self, step):
+        if self.base_lr is None:
+            self.base_lr = [
+                param_group["lr"] for param_group in self.optimizer.param_groups
+            ]
+        for param_group, base_lr_group in zip(
+            self.optimizer.param_groups, self.base_lr
+        ):
+            param_group["lr"] = self.get_lr(base_lr_group, step)
+
+    def state_dict(self):
+        return {
+            key: value for key, value in self.__dict__.items() if key != "optimizer"
+        }
+
+    def load_state_dict(self, state_dict):
+        self.__dict__.update(state_dict)
+
+
+class SqrtDecayLR:
+    def __init__(self, optimizer, total_steps):
+        self.optimizer = optimizer
+        self.total_steps = total_steps
+        self.base_lr = None
+
+    def get_lr(self, lr, step):
+        return lr * (1 - min(math.sqrt(step / max(self.total_steps, 1)), 1.0))
+
+    def step(self, step):
+        if self.base_lr is None:
+            self.base_lr = [
+                param_group["lr"] for param_group in self.optimizer.param_groups
+            ]
+        for param_group, base_lr_group in zip(
+            self.optimizer.param_groups, self.base_lr
+        ):
+            param_group["lr"] = self.get_lr(base_lr_group, step)
+
+    def state_dict(self):
+        return {
+            key: value for key, value in self.__dict__.items() if key != "optimizer"
+        }
+
+    def load_state_dict(self, state_dict):
+        self.__dict__.update(state_dict)
+
+
