@@ -5,7 +5,8 @@ import torch.nn.functional as F
 
 @torch.compile
 def gelu(x: torch.Tensor):
-    return x * torch.erf(x)
+    # return x * torch.erf(x)
+    return F.gelu(x)
 
 @torch.compile
 def po2(x: torch.Tensor):
