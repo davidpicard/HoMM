@@ -21,6 +21,7 @@ parser.add_argument("--workers", type=int, default=8)
 parser.add_argument("--size", type=int, default=512)
 parser.add_argument("--quantization-scale", type=float, default=8.0)
 parser.add_argument("--chunk-size", type=int, default=10000)
+parser.add_argument("--target-precision", type=str, default="fp16")
 args = parser.parse_args()
 
 
@@ -29,6 +30,13 @@ if args.precision == "bf16":
     precision_type = torch.bfloat16
 elif precision_type == "fp16":
     precision_type = torch.float16
+
+if args.target_precision == "fp16":
+    quantization_scale = 1.0
+else:
+    quantization_scale = args.quantization_scale
+
+print(f"Saving data in {args.target_precision}")
 
 ## imagenet loader
 tr = [
@@ -46,8 +54,7 @@ train = ImageNet(
 train = DataLoader(train, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
 ## vae
-vae = AutoencoderKL.from_pretrained("runwayml/stable-diffusion-v1-5", device="cuda:0", subfolder="vae",
-                                                 use_safetensors=True)
+vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema", use_safetensors=True)
 vae = vae.to(args.device)
 vae.eval()
 for p in vae.parameters():
@@ -113,15 +120,19 @@ for img, lbl in tqdm(train):
         dist = vae.encode(img).latent_dist
         latent_mean = dist.mean * vae.config.scaling_factor
         latent_std = dist.std * vae.config.scaling_factor
-    max_m = latent_mean.abs().max() if latent_mean.abs().max() > max_m else max_m
-    max_s = latent_std.abs().max() if latent_std.abs().max() > max_s else max_s
-    latent_meanu8 = (latent_mean * args.quantization_scale).clamp(-127, 127).to(torch.int8)
-    latent_stdu8 = (latent_std * 1000* args.quantization_scale).clamp(-127, 127).to(torch.int8)
+    if args.target_precision == "int8":
+        max_m = latent_mean.abs().max() if latent_mean.abs().max() > max_m else max_m
+        max_s = latent_std.abs().max() if latent_std.abs().max() > max_s else max_s
+        latent_mean_q = (latent_mean * quantization_scale).clamp(-127, 127).to(torch.int8)
+        latent_std_q = (latent_std * 1000 * quantization_scale).clamp(-127, 127).to(torch.int8)
+    else:
+        latent_mean_q = latent_mean.to(torch.float16)
+        latent_std_q = (latent_std*1000).to(torch.float16)
 
     for i in range(len(lbl)):
         name = f"sample_{count}.npz"
         buffer = io.BytesIO()
-        np.savez_compressed(buffer, latent_meanu8[i, ...].cpu().numpy(), latent_stdu8[i, ...].cpu().numpy(), lbl[i].cpu().numpy())
+        np.savez_compressed(buffer, latent_mean_q[i, ...].cpu().numpy(), latent_std_q[i, ...].cpu().numpy(), lbl[i].cpu().numpy())
         buffer.seek(0)
         out.add_sample(name, buffer)
         count += 1
