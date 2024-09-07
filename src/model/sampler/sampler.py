@@ -236,9 +236,9 @@ class DPMScheduler():
         if self.clip_img_pred:
             sigma_now = torch.sqrt(t / self.train_timesteps)
             alpha_now = torch.sqrt(1 - t / self.train_timesteps)
-            x_pred = (samples - torch.sqrt(sigma_now) * noise_pred) / torch.sqrt(1 - sigma_now)
+            x_pred = (samples - sigma_now * noise_pred) / alpha_now
             x_pred = torch.clamp(x_pred, -self.clip_value, self.clip_value)
-            noise_pred = (samples - torch.sqrt(1 - sigma_now) * x_pred) / torch.sqrt(sigma_now)
+            noise_pred = (samples - alpha_now * x_pred) / sigma_now
         return noise_pred
 
     def _step1(self, i, samples, ctx, cfg=0.):
