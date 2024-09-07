@@ -15,8 +15,7 @@ denormalize = transforms.Normalize(
 class VAE(nn.Module):
     def __init__(self):
         super().__init__()
-        self.vae = AutoencoderKL.from_pretrained("runwayml/stable-diffusion-v1-5", device="cuda:0", subfolder="vae",
-                                                 use_safetensors=True)
+        self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema", use_safetensors=True)
         self.vae.eval()
         for p in self.vae.parameters():
             p.requires_grad = False
