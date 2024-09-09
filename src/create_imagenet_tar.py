@@ -132,7 +132,7 @@ for img, lbl in tqdm(train):
     for i in range(len(lbl)):
         name = f"sample_{count}.npz"
         buffer = io.BytesIO()
-        np.savez_compressed(buffer, latent_mean_q[i, ...].cpu().numpy(), latent_std_q[i, ...].cpu().numpy(), lbl[i].cpu().numpy())
+        np.savez(buffer, latent_mean_q[i, ...].cpu().numpy(), latent_std_q[i, ...].cpu().numpy(), lbl[i].cpu().numpy())
         buffer.seek(0)
         out.add_sample(name, buffer)
         count += 1
