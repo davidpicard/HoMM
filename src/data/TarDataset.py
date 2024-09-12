@@ -6,6 +6,7 @@ import io
 import numpy as np
 from collections import OrderedDict
 import threading
+import os
 
 class LRUCache:
     def __init__(self, capacity: int):
@@ -17,14 +18,14 @@ class LRUCache:
             key, tar = self.cache.popitem(last=False)
             tar.close()
 
-    def get(self, key: int) -> tarfile.TarFile:
+    def get(self, key: int) -> (tarfile.TarFile, tarfile.TarInfo):
         if key not in self.cache:
-            return -1
+            return -1, -1
         else:
             self.cache.move_to_end(key)
             return self.cache[key]
 
-    def put(self, key: int, value: tarfile.TarFile) -> None:
+    def put(self, key: int, value: (tarfile.TarFile, tarfile.TarInfo)) -> None:
         if key in self.cache:
             self.cache.move_to_end(key)
         self.cache[key] = value
@@ -64,19 +65,22 @@ class TarDataset(Dataset):
 
     def __getitem__(self, idx):
         assert idx < self.total_count
-        current_file_id = 0
-        while idx >= self.counts[current_file_id]:
-            idx -= self.counts[current_file_id]
-            current_file_id += 1
+        # current_file_id = 0
+        # while idx >= self.counts[current_file_id]:
+        #     idx -= self.counts[current_file_id]
+        #     current_file_id += 1
+        current_file_id = idx % len(self.filenames)
+        idx = idx // len(self.filenames)
+        # print(f"pid: {os.getpid()} fid: {current_file_id} idx: {idx}")
 
         # cehck cache
         with self.lock:
-            tar = self.cache.get(current_file_id)
+            tar, members = self.cache.get(current_file_id)
             if tar == -1:
                 tar = tarfile.open(self.filenames[current_file_id], 'r')
-                self.cache.put(current_file_id, tar)
+                members = tar.getmembers()
+                self.cache.put(current_file_id, (tar, members))
 
-        members = tar.getmembers()
         member = members[idx]
         f = tar.extractfile(member)
         data = np.load(io.BytesIO(f.read()))

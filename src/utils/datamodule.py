@@ -33,26 +33,27 @@ class ImageDataModule(L.LightningDataModule):
         self.val_aug = self.val_dataset.transform
 
     def train_dataloader(self):
-        shuffle = True
-        if isinstance(self.train_dataset, torch.utils.data.IterableDataset):
-            shuffle = False
+        sampler = torch.utils.data.DistributedSampler(self.train_dataset, shuffle=False, drop_last=True)
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
-            shuffle=shuffle,
+            shuffle=False,
             prefetch_factor=8,
             pin_memory=True,
             persistent_workers=True,
             drop_last=True,
             num_workers=self.num_workers,
+            sampler=sampler,
         )
 
     def val_dataloader(self):
+        sampler = torch.utils.data.DistributedSampler(self.train_dataset, shuffle=False, drop_last=True)
         return DataLoader(
             self.val_dataset,
             batch_size=self.val_batch_size,
             # shuffle=True,
             num_workers=1,
+            sampler = sampler,
         )
 
     def test_dataloader(self):

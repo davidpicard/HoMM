@@ -75,6 +75,7 @@ def train(cfg):
         cfg.trainer,
         logger=logger,
         callbacks=callbacks,
+        use_distributed_sampler=False
     )
 
     #load weights
