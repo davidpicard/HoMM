@@ -16,6 +16,7 @@ class LRUCache:
     def __del__(self):
         if len(self.cache) > 0:
             key, tar = self.cache.popitem(last=False)
+            tar, members = tar
             tar.close()
 
     def get(self, key: int) -> (tarfile.TarFile, tarfile.TarInfo):
