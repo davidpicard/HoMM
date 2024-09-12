@@ -32,6 +32,7 @@ class LRUCache:
         self.cache[key] = value
         if len(self.cache) > self.capacity:
             key, tar = self.cache.popitem(last=False)
+            tar, members = tar
             tar.close()
 
 
