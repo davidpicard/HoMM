@@ -3,6 +3,8 @@ from torch.utils.data import DataLoader
 import math
 import torch
 
+from data.TarDataset import TarDistributedSampler
+
 
 class ImageDataModule(L.LightningDataModule):
     """
@@ -33,7 +35,8 @@ class ImageDataModule(L.LightningDataModule):
         self.val_aug = self.val_dataset.transform
 
     def train_dataloader(self):
-        sampler = torch.utils.data.DistributedSampler(self.train_dataset, shuffle=False, drop_last=True)
+        # sampler = torch.utils.data.DistributedSampler(self.train_dataset, shuffle=False, drop_last=True)
+        sampler = TarDistributedSampler(self.train_dataset, shuffle=False)
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
