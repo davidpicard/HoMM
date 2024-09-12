@@ -59,7 +59,7 @@ class TarDataset(Dataset):
         self.transform = None
         self.generator = torch.Generator().manual_seed(seed)
 
-        self.cache = LRUCache(capacity=80)
+        self.cache = LRUCache(capacity=256)
         self.lock = threading.Lock()
 
     def __len__(self):
