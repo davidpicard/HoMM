@@ -7,6 +7,7 @@ import numpy as np
 from collections import OrderedDict
 import threading
 import os
+import einops
 
 class LRUCache:
     def __init__(self, capacity: int):
@@ -47,7 +48,7 @@ import torch.distributed as dist
 import math
 
 class TarDistributedSampler(Sampler):
-    def __init__(self, dataset, num_replicas=None, rank=None, shuffle=True, seed=0):
+    def __init__(self, dataset, batch_size, num_workers, num_replicas=None, rank=None, shuffle=True, seed=0):
         if num_replicas is None:
             if not dist.is_available():
                 raise RuntimeError("Requires distributed package to be available")
@@ -57,6 +58,8 @@ class TarDistributedSampler(Sampler):
                 raise RuntimeError("Requires distributed package to be available")
             rank = dist.get_rank()
         self.dataset = dataset
+        self.batch_size = batch_size
+        self.num_workers = num_workers
         self.num_replicas = num_replicas
         self.rank = rank
         self.epoch = 0
@@ -79,6 +82,13 @@ class TarDistributedSampler(Sampler):
         indices = indices[start:end]
         assert len(indices) == self.num_samples
         # print(f"start: {start} chunk_size: {chunk_size}")
+
+        remains = self.num_samples%(self.batch_size*self.num_workers)
+        end = self.num_samples - remains
+        # print(f"n: {self.num_samples} end: {end}, {remains} samples left after splitting into workers and batches")
+        split = einops.rearrange(torch.tensor(indices[:end]), "(w n b) -> (n w b)", b=self.batch_size, w=self.num_workers)
+        indices = split.tolist() + indices[end:]
+        assert len(indices) == self.num_samples
 
         return iter(indices)
 

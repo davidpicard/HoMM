@@ -36,7 +36,7 @@ class ImageDataModule(L.LightningDataModule):
 
     def train_dataloader(self):
         # sampler = torch.utils.data.DistributedSampler(self.train_dataset, shuffle=False, drop_last=True)
-        sampler = TarDistributedSampler(self.train_dataset, shuffle=False)
+        sampler = TarDistributedSampler(self.train_dataset, batch_size=self.batch_size, num_workers=self.num_workers, shuffle=False)
         return DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
