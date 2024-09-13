@@ -16,6 +16,6 @@ instance:
   lr_scheduler_builder: ${model.lr_scheduler}
   torch_compile: false
   latent_encode: false
-  latent_decode: true
+  latent_decode: false
   ema_cfg: ${model.ema}
 
