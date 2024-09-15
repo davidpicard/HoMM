@@ -13,6 +13,7 @@ class LogGenImage(Callback):
         self.log_every_n_steps = log_every_n_steps
         self.vae = VAE()
         self.ready = True
+        self.last_log_step = -1
 
     def on_sanity_check_start(self, trainer, pl_module):
         self.ready = False
@@ -22,7 +23,8 @@ class LogGenImage(Callback):
         self.ready = True
 
     def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
-        if pl_module.global_step % self.log_every_n_steps == 0 and self.ready:
+        if pl_module.global_step % self.log_every_n_steps == 0 and pl_module.global_step > self.last_log_step and self.ready:
+            self.last_log_step = pl_module.global_step
             x, y = batch
             print("Logging images")
             logger = trainer.logger
