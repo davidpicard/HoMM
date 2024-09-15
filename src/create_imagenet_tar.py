@@ -22,8 +22,11 @@ parser.add_argument("--size", type=int, default=512)
 parser.add_argument("--quantization-scale", type=float, default=8.0)
 parser.add_argument("--chunk-size", type=int, default=10000)
 parser.add_argument("--target-precision", type=str, default="fp16")
+parser.add_argument("--split", type=str, default="train")
 args = parser.parse_args()
 
+if args.split == "val":
+    print("Extracting val set")
 
 precision_type = torch.float
 if args.precision == "bf16":
@@ -47,11 +50,12 @@ tr = [
 ]
 transform_train = transforms.Compose(tr)
 
-train = ImageNet(
+dataset = ImageNet(
     args.imagenet_path,
     transform=transform_train,
+    split=args.split
 )
-train = DataLoader(train, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
+dataset = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
 ## vae
 vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema", use_safetensors=True)
@@ -62,11 +66,12 @@ for p in vae.parameters():
 
 
 class TarWriter():
-    def __init__(self, dirname, chunk_size=10000, quantization_scale=8.0):
+    def __init__(self, dirname, chunk_size=10000, quantization_scale=8.0, split="train"):
         import os, io, tarfile, json
         self.dir = dirname
         self.chunks_size = chunk_size
         self.quantization_scale = quantization_scale
+        self.split = "val_" if split == "val" else ""
         try:
             os.makedirs(dirname, exist_ok=True)
         except:
@@ -83,7 +88,7 @@ class TarWriter():
 
     def add_tarfile(self):
         self.close()
-        self.current_filename = f"{self.dir}/chunk_{len(self.filelist)}.tar"
+        self.current_filename = f"{self.dir}/{self.split}chunk_{len(self.filelist)}.tar"
         self.current_tar = tarfile.open(self.current_filename, "w")
         self.current_sample_count = 0
         print(f"*** open {self.current_filename}")
@@ -94,7 +99,7 @@ class TarWriter():
             self.filelist.append({"filename":self.current_filename,
                                   "count":self.current_sample_count,
                                   "quantization_scale": self.quantization_scale})
-            with open(f"{self.dir}/index.json", "w") as f:
+            with open(f"{self.dir}/{self.split}index.json", "w") as f:
                 json.dump(self.filelist, f)
             self.current_tar = None
             self.current_filename = None
@@ -107,11 +112,11 @@ class TarWriter():
         self.current_tar.addfile(info, buffer)
         self.current_sample_count += 1
 
-out = TarWriter(args.output, chunk_size=args.chunk_size, quantization_scale = args.quantization_scale)
+out = TarWriter(args.output, chunk_size=args.chunk_size, quantization_scale = args.quantization_scale, split=args.split)
 count = 0
 max_m = 0
 max_s = 0
-for img, lbl in tqdm(train):
+for img, lbl in tqdm(dataset):
     img = img.to(args.device)
     imgf = img.flip(dims=(3,))
     img = torch.cat([img, imgf], dim=0)

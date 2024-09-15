@@ -39,7 +39,7 @@ class LRUCache:
 
 def build_imagenet_tar(data_dir):
     train = TarDataset(data_dir)
-    val = TarDataset(data_dir)
+    val = TarDataset(data_dir, split="val")
     return train, val
 
 
@@ -100,8 +100,9 @@ class TarDistributedSampler(Sampler):
 
 
 class TarDataset(Dataset):
-    def __init__(self, dirname, seed=3407):
+    def __init__(self, dirname, split="train", seed=3407):
         self.dir = dirname
+        self.split = "val_" if split == "val" else ""
         self.filenames = []
         self.counts = []
         self.q = []
