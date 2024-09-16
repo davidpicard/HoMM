@@ -251,8 +251,7 @@ class ClassConditionalDiH(nn.Module):
                  order=2,
                  order_expand=4,
                  ffw_expand=4,
-                 dropout=0.,
-                 learnable_pos_emb=False):
+                 dropout=0.):
         super().__init__()
         self.input_dim = input_dim
         self.n_classes = n_classes
@@ -265,7 +264,6 @@ class ClassConditionalDiH(nn.Module):
         self.order_expand = order_expand
         self.ffw_expand = ffw_expand
         self.dropout = dropout
-        self.learnable_pos_emb = learnable_pos_emb
 
         self.classes_emb = nn.Embedding(n_classes + 1, dim)
         self.freqs = nn.Parameter(torch.exp(-2 * np.log(n_timesteps) * torch.arange(0, dim//2) / dim), requires_grad=False)
@@ -277,7 +275,6 @@ class ClassConditionalDiH(nn.Module):
         # for diffusers
         self.in_channels = input_dim
         self.sample_size = (self.n_patches, self.n_patches)
-        self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)), requires_grad=False)
         self.in_conv = nn.Conv2d(input_dim, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
         self.layers = nn.ModuleList(
             [DiHBlock(dim=dim, order=order, order_expand=order_expand, ffw_expand=ffw_expand) for _ in range(n_layers)])
@@ -304,14 +301,6 @@ class ClassConditionalDiH(nn.Module):
             m = l.gate_mlp[-1]
             nn.init.zeros_(m.weight)
             nn.init.constant_(m.bias, -1.)
-        #pos emb
-        if self.learnable_pos_emb:
-            print('using learnable positional embedding')
-            self.pos_emb.requires_grad = True
-            nn.init.trunc_normal_(self.pos_emb, 0., 0.02)
-        else:
-            pos_emb = get_2d_sincos_pos_embed(self.pos_emb.shape[-1], self.n_patches)
-            self.pos_emb.data.copy_(torch.from_numpy(pos_emb).float().unsqueeze(0))
         # patch and time emb
         nn.init.normal_(self.classes_emb.weight, std=0.02)
         nn.init.normal_(self.time_emb[0].weight, std=0.02)
@@ -326,9 +315,13 @@ class ClassConditionalDiH(nn.Module):
 
         # patchify
         x = self.in_conv(img)
+        b, c, h, w = x.shape
+        pos_emb = sincos_embedding_2d(self.n_patches, self.n_patches, self.dim).to(x.device)
+        pos_emb = einops.rearrange(pos_emb, "b h w d -> b (h w) d")
+
         x = einops.rearrange(x, 'b d h w -> b (h w) d')
         b, n, d = x.shape
-        x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
+        x = x + pos_emb * torch.ones((b, 1, 1)).to(x.device)
 
         # embed time
         time = torch.einsum("b, n -> bn", time, self.freqs)
@@ -337,8 +330,7 @@ class ClassConditionalDiH(nn.Module):
         # cond
         c = self.classes_emb(cls)
         c = c+t
-        # add pos to cond
-        c = c.unsqueeze(1) #+ self.pos_emb
+        c = c.unsqueeze(1)
 
         # forward pass
         for l in range(self.n_layers):
@@ -359,11 +351,19 @@ def DiH_S_4(**kwargs):
     return ClassConditionalDiH(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
 def DiH_B_2(**kwargs):
     return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+def DiH_B_4(**kwargs):
+    return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
+def DiH_L_2(**kwargs):
+    return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, **kwargs)
+def DiH_L_4(**kwargs):
+    return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=4, order=2, order_expand=2, ffw_expand=2, **kwargs)
+def DiH_XL_2(**kwargs):
+    return ClassConditionalDiH(n_layers=28, dim=1152, kernel_size=2, order=2, order_expand=2, ffw_expand=2, **kwargs)
 
 DiH_models = {
-#    'DiT-XL/2': DiT_XL_2,  'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
-#    'DiT-L/2':  DiT_L_2,   'DiT-L/4':  DiT_L_4,   'DiT-L/8':  DiT_L_8,
-    'DiH-B/2':  DiH_B_2, #  'DiT-B/4':  DiT_B_4,   'DiT-B/8':  DiT_B_8,
+    'DiH-XL/2': DiH_XL_2, # 'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
+    'DiH-L/2':  DiH_L_2,   'DiH-L/4':  DiH_L_4, #  'DiT-L/8':  DiT_L_8,
+    'DiH-B/2':  DiH_B_2,   'DiH-B/4':  DiH_B_4,   'DiT-B/8':  DiT_B_8,
     'DiH-S/2':  DiH_S_2,   'DiH-S/4':  DiH_S_4,  # 'DiT-S/8':  DiT_S_8,
 }
 
@@ -456,9 +456,16 @@ class ClassConditionalDiHpp(nn.Module):
 
         # patchify
         x = self.in_conv(img)
+        b, d, h, w = x.shape
         x = einops.rearrange(x, 'b d h w -> b (h w) d')
         b, n, d = x.shape
-        x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
+        # rescale pos_emb if needed
+        pos_emb = self.pos_emb
+        if n != self.n_patches**2:
+            pos_emb = einops.rearrange(pos_emb, "b (h w) d -> b d h w", h=self.n_patches)
+            pos_emb = torch.nn.functional.interpolate(pos_emb, size=(h, w), mode='bicubic', antialias=True)
+            pos_emb = einops.rearrange(pos_emb, "b d h w -> b (h w) d")
+        x = x + pos_emb * torch.ones((b, 1, 1)).to(x.device)
 
         # add registers
         r = self.registers.tile((b, 1, 1))
@@ -472,7 +479,15 @@ class ClassConditionalDiHpp(nn.Module):
         c = self.classes_emb(cls)
         c = c+t
         # add pos to cond
-        c = c.unsqueeze(1) + self.cond_pos_emb
+        cond_pos_emb = self.cond_pos_emb
+        if n != self.n_patches**2:
+            cond_pos_r = cond_pos_emb[:, 0:self.n_registers, :]
+            pos = cond_pos_emb[:, self.n_registers:, :]
+            pos = einops.rearrange(pos, "b (h w) d -> b d h w", h=self.n_patches)
+            pos_up = torch.nn.functional.interpolate(pos, size=(h, w), mode='bicubic', antialias=True)
+            pos_up = einops.rearrange(pos_up, "b d h w -> b (h w) d")
+            cond_pos_emb = torch.cat([cond_pos_r, pos_up], dim=1)
+        c = c.unsqueeze(1) + cond_pos_emb
 
         # forward pass
         for l in range(self.n_layers):
@@ -487,7 +502,7 @@ class ClassConditionalDiHpp(nn.Module):
 
         # depatchify
         out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
-                               h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
+                               h=h, w=w, k=self.kernel_size, s=self.kernel_size)
 
         return out
 
@@ -498,6 +513,8 @@ def DiHpp_S_4(**kwargs):
     return ClassConditionalDiHpp(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiHpp_B_2(**kwargs):
     return ClassConditionalDiHpp(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
+def DiHpp_B_4(**kwargs):
+    return ClassConditionalDiHpp(n_layers=12, dim=768, kernel_size=4, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiHpp_L_2(**kwargs):
     return ClassConditionalDiHpp(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
 def DiHpp_XL_2(**kwargs):
@@ -507,7 +524,7 @@ def DiHpp_XL_2(**kwargs):
 DiHpp_models = {
     'DiHpp-XL/2': DiHpp_XL_2,  #'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
     'DiHpp-L/2':  DiHpp_L_2,   # 'DiT-L/4':  DiT_L_4,   'DiT-L/8':  DiT_L_8,
-    'DiHpp-B/2':  DiHpp_B_2, #  'DiT-B/4':  DiT_B_4,   'DiT-B/8':  DiT_B_8,
+    'DiHpp-B/2':  DiHpp_B_2,   'DiHpp-B/4':  DiHpp_B_4,   'DiT-B/8':  DiT_B_8,
     'DiHpp-S/2':  DiHpp_S_2,   'DiHpp-S/4':  DiHpp_S_4,  # 'DiT-S/8':  DiT_S_8,
 }
 
@@ -561,3 +578,26 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
 
     emb = np.concatenate([emb_sin, emb_cos], axis=1)  # (M, D)
     return emb
+
+
+import math
+def sincos_embedding_2d(h, w, d, r=0):
+    f_max = d // 4
+    freqs = torch.arange(f_max) * 2 + 1
+    f = einops.rearrange(freqs, "(b n d) -> b n d", b=1, n=1)
+
+    x = torch.linspace(0, 1, w)
+    x = einops.rearrange(x, "(b n d) -> b n d", b=1, d=1)
+    s = (x * f * math.pi).sin()
+    c = (x * f * math.pi).cos()
+    x = torch.cat([s, c], dim=-1)
+    x = einops.rearrange(x, "b (h w) d -> b h w d", h=1).repeat([1, h, 1, 1])
+
+    y = torch.linspace(0, 1, h)
+    y = einops.rearrange(y, "(b n d) -> b n d", b=1, d=1)
+    s = (y * f * math.pi).sin()
+    c = (y * f * math.pi).cos()
+    y = torch.cat([s, c], dim=-1)
+    y = einops.rearrange(y, "b (h w) d -> b h w d", w=1).repeat([1, 1, w, 1])
+
+    return torch.cat([x, y], dim=-1)

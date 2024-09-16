@@ -322,6 +322,57 @@ class DPMScheduler():
                 step_callback(i, samples, x_0)
         return samples
 
+
+class FlowMatchingSampler():
+    def __init__(self,
+                 model):
+        self.model = model
+        self.train_timesteps = model.n_timesteps
+        self.timesteps = None
+
+    def add_noise(self, x, noise, t):
+        t = torch.clamp(t, 0, self.train_timesteps)
+        sigma = (t / self.train_timesteps).view(x.shape[0], 1, 1, 1)
+        return (1 - (1-1e-5)*sigma) * x + (sigma) * noise
+
+    def set_timesteps(self, num_inference_steps):
+        timesteps = torch.linspace(1.0, self.train_timesteps - 1, num_inference_steps + 1)
+        self.num_inference_steps = num_inference_steps
+        self.timesteps = timesteps.flip(0)
+        self.noise_prev = None
+
+    def _predict(self, samples, t, ctx, cfg=0.):
+        b, d, h, w = samples.shape
+        if cfg > 0:
+            # duplicate all
+            x_input = torch.cat([samples, samples], dim=0)
+            t_input = torch.cat([t, t], dim=0).to(samples.device)
+            c_input = torch.cat([ctx, ctx], dim=0).to(samples.device)
+            c_input[b:] = 1000
+            pred = self.model(x_input, time=t_input.squeeze(), cls=c_input)
+            eps_c = pred[0:b, ...]
+            eps_u = pred[b:, ...]
+            pred = eps_c + cfg * (eps_c - eps_u)
+        else:
+            pred = self.model(samples, time=t.squeeze(), cls=ctx)
+
+        return pred
+
+    @torch.no_grad()
+    def sample(self, samples, class_labels, cfg: float = 0., num_inference_steps: int = 50, step_callback=None):
+        class_labels = class_labels.to(samples.device)
+        b, c, h, w = samples.shape
+        # set step values
+        self.set_timesteps(num_inference_steps)
+        for i, t in enumerate(self.timesteps):
+            # compute previous image: x_t -> x_t-1
+            t = t * torch.ones((b, 1, 1, 1)).to(samples.device)
+            samples = samples - 1./self.num_inference_steps*self._predict(samples, t, class_labels, cfg)
+            if step_callback is not None:
+                step_callback(i, samples, samples)
+        return samples
+
+
 ##  cfg sched
 
 def linear(t):

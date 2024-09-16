@@ -5,7 +5,7 @@ import torch.nn as nn
 from diffusers import AutoencoderKL
 from torchvision.transforms import transforms
 
-from .sampler.sampler import DPMScheduler
+from .sampler.sampler import DPMScheduler, FlowMatchingSampler
 
 denormalize = transforms.Normalize(
     mean=[-1],
@@ -49,7 +49,7 @@ class DiffusionModule(L.LightningModule):
             torch_compile=False,
             latent_encode=False,
             latent_decode=False,
-            ema_cfg=None
+            ema_cfg=None,
         ):
         super().__init__()
         # do optim
@@ -81,10 +81,8 @@ class DiffusionModule(L.LightningModule):
 
         # noise scheduler
         self.n_timesteps = model.n_timesteps
-        if ema_cfg is not None:
-            self.sampler = DPMScheduler(model=self.ema.ema_model)
-        else:
-            self.sampler = DPMScheduler(model=self.ema.ema_model)
+        print(f"prediction mode: {self.mode}")
+        self.sampler = FlowMatchingSampler(model=self.ema.ema_model) if self.mode == "fm" else DPMScheduler(model=self.ema.ema_model)
 
         # Set to False because we don't load the vae
         self.strict_loading = False
@@ -112,10 +110,18 @@ class DiffusionModule(L.LightningModule):
         # time = (time*self.n_timesteps).to(img.device)
         time = torch.randint(0, self.n_timesteps, (b,)).to(img.device)
         eps = torch.randn_like(img)
-        img = self.sampler.add_noise(img, eps, time)
+        n_img = self.sampler.add_noise(img, eps, time)
 
-        pred = self.model(img, time, label)
-        loss = {"loss": ((pred - eps)**2).mean()}
+        pred = self.model(n_img, time, label)
+
+        if self.mode == "fm":
+            t = time/self.n_timesteps
+            t = t.view(b, 1, 1, 1)
+            target = t*(eps - img)
+            loss = {"loss": ((target - pred)**2).mean()}
+        elif self.mode == "eps":
+            loss = {"loss": ((pred - eps)**2).mean()}
+
         for metric_name, metric_value in loss.items():
             self.log(
                 f"train/{metric_name}",
@@ -149,9 +155,17 @@ class DiffusionModule(L.LightningModule):
         time = torch.linspace(0, self.n_timesteps, b).to(img.device)
         # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
         eps = torch.randn_like(img)
-        img_noisy = self.sampler.add_noise(img, eps, time)
-        pred = self.model(img_noisy, time, label)
-        loss = self.loss(pred, eps, average=True)
+        n_img = self.sampler.add_noise(img, eps, time)
+
+        pred = self.model(n_img, time, label)
+
+        if self.mode == "fm":
+            t = time/self.n_timesteps
+            t = t.view(b, 1, 1, 1)
+            target = t*(eps - img)
+            loss = {"loss": ((target - pred)**2).mean()}
+        elif self.mode == "eps":
+            loss = {"loss": ((pred - eps)**2).mean()}
 
         # logging
         for metric_name, metric_value in loss.items():
