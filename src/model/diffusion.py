@@ -115,9 +115,7 @@ class DiffusionModule(L.LightningModule):
         pred = self.model(n_img, time, label)
 
         if self.mode == "fm":
-            t = time/self.n_timesteps
-            t = t.view(b, 1, 1, 1)
-            target = t*(eps - img)
+            target = (eps - img)
             loss = {"loss": ((target - pred)**2).mean()}
         elif self.mode == "eps":
             loss = {"loss": ((pred - eps)**2).mean()}
@@ -160,9 +158,7 @@ class DiffusionModule(L.LightningModule):
         pred = self.model(n_img, time, label)
 
         if self.mode == "fm":
-            t = time/self.n_timesteps
-            t = t.view(b, 1, 1, 1)
-            target = t*(eps - img)
+            target = (eps - img)
             loss = {"loss": ((target - pred)**2).mean()}
         elif self.mode == "eps":
             loss = {"loss": ((pred - eps)**2).mean()}
