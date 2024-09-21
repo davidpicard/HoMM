@@ -38,6 +38,7 @@ parser.add_argument("--schedule", type=str, default="linear")
 parser.add_argument("--clip", type=bool, default=False)
 parser.add_argument("--clip-value", type=float, default=1.0)
 parser.add_argument("--start", type=int, default=0)
+parser.add_argument("--stop", type=int, default=1000)
 
 parser.add_argument("--model-name", type=str, default="custom")
 parser.add_argument("--compile", type=bool, default=False)
@@ -148,6 +149,8 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
 
         if i < args.start:
             continue
+        if i >= args.stop:
+            break
 
         if args.n_images_per_class > args.batch_size:
             samples = []
