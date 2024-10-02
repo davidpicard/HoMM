@@ -3,7 +3,7 @@ import os
 
 import einops
 import torch
-from model.network.imagediffusion import ClassConditionalDiHpp, DiHpp_models
+from model.network.imagediffusion import ClassConditionalDiHpp, DiHpp_models, DiH_models
 from model.diffusion import DiffusionModule, denormalize, VAE
 from model.sampler.sampler import *
 from torchvision.utils import save_image
@@ -57,15 +57,15 @@ elif precision_type == "fp16":
 print("loading model")
 if args.model_name == "DiH-S/2":
     print("model: DiH-S/2")
-    model = DiHpp_models["DiH-S/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+    model = DiH_models["DiH-S/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
 elif args.model_name == "DiH-B/2":
-    model = DiHpp_models["DiH-B/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+    model = DiH_models["DiH-B/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
     print("model: DiH-B/2")
 elif args.model_name == "DiH-L/2":
-    model = DiHpp_models["DiH-L/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+    model = DiH_models["DiH-L/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
     print("model: DiH-L/2")
 elif args.model_name == "DiH-XL/2":
-    model = DiHpp_models["DiH-XL/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+    model = DiH_models["DiH-XL/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
     print("model: DiH-XL/2")
 elif args.model_name == "DiHpp-S/2":
     print("model: DiHpp-S/2")
