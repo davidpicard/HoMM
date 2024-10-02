@@ -359,7 +359,7 @@ class FlowMatchingSampler():
         return pred
 
     @torch.no_grad()
-    def sample(self, samples, class_labels, cfg: float = 0., num_inference_steps: int = 50, step_callback=None):
+    def sample(self, samples, class_labels, cfg: float = 0., num_inference_steps: int = 50, step_callback=None, cfg_scheduler = None):
         class_labels = class_labels.to(samples.device)
         b, c, h, w = samples.shape
         # set step values
@@ -408,7 +408,7 @@ class HeunVelocitySampler():
         return pred
 
     @torch.no_grad()
-    def sample(self, samples, class_labels, cfg: float = 0., num_inference_steps: int = 50, step_callback=None):
+    def sample(self, samples, class_labels, cfg: float = 0., num_inference_steps: int = 50, step_callback=None, cfg_scheduler = None):
         class_labels = class_labels.to(samples.device)
         b, c, h, w = samples.shape
         # set step values
