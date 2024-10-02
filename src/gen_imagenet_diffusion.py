@@ -55,7 +55,19 @@ elif precision_type == "fp16":
     precision_type = torch.float16
 
 print("loading model")
-if args.model_name == "DiHpp-S/2":
+if args.model_name == "DiH-S/2":
+    print("model: DiH-S/2")
+    model = DiHpp_models["DiH-S/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+elif args.model_name == "DiH-B/2":
+    model = DiHpp_models["DiH-B/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+    print("model: DiH-B/2")
+elif args.model_name == "DiH-L/2":
+    model = DiHpp_models["DiH-L/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+    print("model: DiH-L/2")
+elif args.model_name == "DiH-XL/2":
+    model = DiHpp_models["DiH-XL/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
+    print("model: DiH-XL/2")
+elif args.model_name == "DiHpp-S/2":
     print("model: DiHpp-S/2")
     model = DiHpp_models["DiHpp-S/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
 elif args.model_name == "DiHpp-B/2":
@@ -138,6 +150,9 @@ with torch.autocast(device_type=device, dtype=precision_type, enabled=True):
     elif args.sampler == "dpm":
         print('using DPM with clip: {} at {}'.format(args.clip, args.clip_value))
         sampler = DPMScheduler(model, clip_img_pred=args.clip, clip_value=args.clip_value)
+    elif args.sampler == "heun":
+        print('using HeunVelocity')
+        sampler = HeunVelocitySampler(model)
     else:
         print('using DDIM with clip: {} at {} and {} schedule'.format(args.clip, args.clip_value, args.schedule))
         sampler = DDIMLinearScheduler(model, schedule=schedule, clip_img_pred=args.clip, clip_value=args.clip_value)

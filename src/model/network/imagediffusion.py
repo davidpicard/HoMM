@@ -354,7 +354,7 @@ def DiH_B_2(**kwargs):
 def DiH_B_4(**kwargs):
     return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
 def DiH_L_2(**kwargs):
-    return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, **kwargs)
+    return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
 def DiH_L_4(**kwargs):
     return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=4, order=2, order_expand=2, ffw_expand=2, **kwargs)
 def DiH_XL_2(**kwargs):
