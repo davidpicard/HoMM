@@ -114,7 +114,7 @@ parser.add_argument("--nb-frames", type=int, default=80)
 parser.add_argument("--temp-chunk-size", type=int, default=8)
 parser.add_argument("--chunk-size", type=int, default=100)
 parser.add_argument("--split", type=str, default="train")
-parser.add_argument("--num_workers", type=int, default=2)
+parser.add_argument("--num-workers", type=int, default=2)
 
 args = parser.parse_args()
 
@@ -132,8 +132,10 @@ size = (int(size[0]), int(size[1]))
 print(f"video size: {size}")
 
 vae = VideoVAE().to(args.device)
+vae = torch.nn.DataParallel(vae)
 text_encoder = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large", torch_dtype=torch.bfloat16).encoder.to(args.device)
 text_encoder.eval()
+text_encoder = torch.nn.DataParallel(text_encoder)
 tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 
 dataset_path = os.path.split(args.path)[0]
@@ -143,7 +145,7 @@ out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split)
 count = 0
 
 data = WebvidDataset(args.path, size=size, nb_frames=args.nb_frames)
-data = DataLoader(data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
+data = DataLoader(data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 
 for batch in tqdm(data):
     # print(f"batch: {batch}")
