@@ -1,0 +1,17 @@
+defaults:
+  - network: videodihs2
+  - loss: MSE
+  - optimizer: adamw
+  - lr_scheduler: warmup_cosine_decay
+  - ema: constant
+
+name: HoMMVidDiff
+instance:
+  _target_: model.videodiffusion.VideoDiffusionModule
+  model: ${model.network}
+  mode: "fm"
+  loss: ${model.loss}
+  optimizer_cfg: ${model.optimizer}
+  lr_scheduler_builder: ${model.lr_scheduler}
+  ema_cfg: ${model.ema}
+

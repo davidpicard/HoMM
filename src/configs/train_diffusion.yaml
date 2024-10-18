@@ -23,6 +23,9 @@ checkpoints:
   save_last: True
   save_on_train_epoch_end: True
 
+imagelogger:
+  _target_: callbacks.log_images.LogGenImage
+
 progress_bar:
   _target_: lightning.pytorch.callbacks.TQDMProgressBar
   refresh_rate: ${computer.progress_bar_refresh_rate}

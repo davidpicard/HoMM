@@ -5,39 +5,15 @@ import torch.nn as nn
 from diffusers import AutoencoderKL
 from torchvision.transforms import transforms
 
-from .sampler.sampler import DPMScheduler, FlowMatchingSampler
+from .sampler.sampler import DPMScheduler, VideoFlowMatchingSampler
 
 denormalize = transforms.Normalize(
     mean=[-1],
     std=[2.],
 )
 
-class VAE(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.vae = AutoencoderKL.from_pretrained("stabilityai/sd-vae-ft-ema", use_safetensors=True)
-        self.vae.eval()
-        for p in self.vae.parameters():
-            p.requires_grad = False
 
-    def vae_encode(self, x):
-        x = self.vae.encode(x).latent_dist.sample()
-        x =  x * self.vae.config.scaling_factor
-        # x = x - torch.tensor([[5.81, 3.25, 0.12, -2.15]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-        # x = x * 0.5 / torch.tensor([[4.17, 4.62, 3.71, 3.28]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-        return x
-
-    def vae_decode(self, x):
-        x =  x / self.vae.config.scaling_factor
-        # x = x / 0.5 * torch.tensor([[4.17, 4.62, 3.71, 3.28]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-        # x = x + torch.tensor([[5.81, 3.25, 0.12, -2.15]]).unsqueeze(-1).unsqueeze(-1).to(x.device)
-        x = self.vae.decode(x).sample
-        x = (x.clamp(-1, 1) / 2 + 0.5)
-        return x
-
-
-
-class DiffusionModule(L.LightningModule):
+class VideoDiffusionModule(L.LightningModule):
     def __init__(
             self,
             model,
@@ -45,10 +21,7 @@ class DiffusionModule(L.LightningModule):
             loss,
             optimizer_cfg,
             lr_scheduler_builder,
-            # train_batch_preprocess,
             torch_compile=False,
-            latent_encode=False,
-            latent_decode=False,
             ema_cfg=None,
         ):
         super().__init__()
@@ -61,11 +34,6 @@ class DiffusionModule(L.LightningModule):
         self.loss = loss
         self.optimizer_cfg = optimizer_cfg
         self.lr_scheduler_builder = lr_scheduler_builder
-        # self.train_batch_preprocess = train_batch_preprocess
-        self.latent_encode = latent_encode
-        self.latent_decode = latent_decode
-        if latent_encode:
-            self.vae = VAE()
 
         #ema
         if ema_cfg is not None:
@@ -82,40 +50,31 @@ class DiffusionModule(L.LightningModule):
         # noise scheduler
         self.n_timesteps = model.n_timesteps
         print(f"prediction mode: {self.mode}")
-        self.sampler = FlowMatchingSampler(model=self.ema.ema_model) if self.mode == "fm" else DPMScheduler(model=self.ema.ema_model)
+        self.sampler = VideoFlowMatchingSampler(model=self.ema.ema_model) if self.mode == "fm" else DPMScheduler(model=self.ema.ema_model)
 
-        # Set to False because we don't load the vae
-        self.strict_loading = False
-
-    def state_dict(self):
-        # Don't save the encoder, it is not being trained
-        return {k: v for k, v in super().state_dict().items() if "vae" not in k}
 
     def training_step(self, batch, batch_idx):
-        img, label = batch
-        if self.latent_encode:
-            with torch.no_grad():
-                img = self.vae.vae_encode(img)
-
-        b = img.shape[0]
+        vid, txt, mask = batch
+        b, n = mask.shape
 
         # drop labels
-        label = label.argmax(dim=1)
-        drop = torch.rand(b, device=label.device) < 0.1
-        label = torch.where(drop, self.model.n_classes, label)
+        drop = torch.rand(b, device=txt.device) < 0.1
+        drop = drop.unsqueeze(-1)
+        zero = torch.zeros_like(mask)
+        mask = torch.where(drop, zero, mask)
 
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
         # time = torch.linspace(0, (b-1)/b, b) + torch.rand(b)/b
         # time = (time*self.n_timesteps).to(img.device)
-        time = torch.randint(0, self.n_timesteps, (b,)).to(img.device)
-        eps = torch.randn_like(img)
-        n_img = self.sampler.add_noise(img, eps, time)
+        time = torch.randint(0, self.n_timesteps, (b,)).to(vid.device)
+        eps = torch.randn_like(vid)
+        n_img = self.sampler.add_noise(vid, eps, time)
 
-        pred = self.model(n_img, time, label)
+        pred = self.model(n_img, time, txt, mask)
 
         if self.mode == "fm":
-            target = (eps - img)
+            target = (eps - vid)
             loss = {"loss": ((target - pred)**2).mean()}
         elif self.mode == "eps":
             loss = {"loss": ((pred - eps)**2).mean()}
@@ -137,25 +96,22 @@ class DiffusionModule(L.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        img, label = batch
-        label = label.argmax(dim=1)
 
-        if self.latent_encode:
-            with torch.no_grad():
-                img = self.vae.vae_encode(img)
+        vid, txt, mask = batch
+        b, n = mask.shape
 
-        b = img.shape[0]
+        # print(f"vid: {vid.shape} txt: {txt.shape} mask: {mask.shape}")
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
-        time = torch.linspace(0, self.n_timesteps, b).to(img.device)
+        time = torch.linspace(0, self.n_timesteps, b).to(vid.device)
         # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
-        eps = torch.randn_like(img)
-        n_img = self.sampler.add_noise(img, eps, time)
+        eps = torch.randn_like(vid)
+        n_img = self.sampler.add_noise(vid, eps, time)
 
-        pred = self.model(n_img, time, label)
+        pred = self.model(n_img, time, txt, mask)
 
         if self.mode == "fm":
-            target = (eps - img)
+            target = (eps - vid)
             loss = {"loss": ((target - pred)**2).mean()}
         elif self.mode == "eps":
             loss = {"loss": ((pred - eps)**2).mean()}

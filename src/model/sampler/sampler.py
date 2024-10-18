@@ -428,6 +428,58 @@ class HeunVelocitySampler():
         return samples
 
 
+
+## ---------------------------------------------------------------
+## Video
+class VideoFlowMatchingSampler():
+    def __init__(self,
+                 model):
+        self.model = model
+        self.train_timesteps = model.n_timesteps
+        self.timesteps = None
+
+    def add_noise(self, x, noise, t):
+        t = torch.clamp(t, 0, self.train_timesteps)
+        sigma = (t / self.train_timesteps).view(x.shape[0], 1, 1, 1, 1)
+        return (1 - sigma) * x + sigma * noise
+
+    def set_timesteps(self, num_inference_steps):
+        timesteps = torch.linspace(1.0, self.train_timesteps - 1, num_inference_steps + 1)
+        self.num_inference_steps = num_inference_steps
+        self.timesteps = timesteps.flip(0)
+        self.noise_prev = None
+
+    def _predict(self, samples, t, txt, mask, cfg=0.):
+        if cfg > 0:
+            b = samples.shape[0]
+            # duplicate all
+            vid_input = torch.cat([samples, samples], dim=0)
+            tim_input = torch.cat([t, t], dim=0).to(samples.device)
+            txt_input = torch.cat([txt, txt], dim=0).to(samples.device)
+            mas_input = torch.cat([mask, torch.zeros_like(mask)], dim=0).to(samples.device)
+            # print(f"v: {vid_input.shape} t: {tim_input.shape} c: {txt_input.shape} m: {mas_input.shape}")
+            pred = self.model(vid_input, time=tim_input.squeeze(), txt=txt_input, mask=mas_input)
+            eps_c = pred[0:b, ...]
+            eps_u = pred[b:, ...]
+            pred = eps_c + cfg * (eps_c - eps_u)
+        else:
+            pred = self.model(samples, time=t.squeeze(), txt=txt, mask=mask)
+
+        return pred
+
+    @torch.no_grad()
+    def sample(self, samples, txt, mask, cfg: float = 0., num_inference_steps: int = 50, step_callback=None):
+        b, n, c, h, w = samples.shape
+        # set step values
+        self.set_timesteps(num_inference_steps)
+        for i, t in enumerate(self.timesteps):
+            # compute previous image: x_t -> x_t-1
+            t = t * torch.ones((b, 1, 1, 1, 1)).to(samples.device)
+            samples = samples - 1./self.num_inference_steps*self._predict(samples, t, txt, mask, cfg)
+            if step_callback is not None:
+                step_callback(i, samples, samples)
+        return samples
+
 ##  cfg sched
 
 def linear(t):

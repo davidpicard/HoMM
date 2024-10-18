@@ -1,0 +1,22 @@
+defaults:
+  - _self_
+
+full_batch_size: 128
+full_val_batch_size: 32
+size: 16x30
+length: 20
+name: WebVid-Tar
+
+dataset_builder:
+  _partial_: true
+  _target_: data.WebvidTarDataset.build_webvid_tar
+  data_dir: ${data_dir}/webvid
+
+datamodule:
+  _target_: utils.datamodule.ImageDataModule
+  dataset_builder: ${data.dataset_builder}
+  full_batch_size: ${data.full_batch_size}
+  full_val_batch_size: ${data.full_batch_size}
+  num_workers: ${computer.num_workers}
+  num_nodes: ${computer.num_nodes}
+  num_devices: ${computer.devices}

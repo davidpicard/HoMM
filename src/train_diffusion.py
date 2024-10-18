@@ -12,7 +12,6 @@ OmegaConf.register_new_resolver("eval", eval)
 import torch
 
 from callbacks.fix_nans import FixNANinGrad
-from callbacks.log_images import LogGenImage
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -57,14 +56,14 @@ def train(cfg):
         monitor=["train/loss"],
     )
 
-    log_gen_img_callback = LogGenImage()
+    log_gen_img_callback = hydra.utils.instantiate(cfg.imagelogger)
 
     callbacks = [
         checkpoint_callback,
         progress_bar,
         lr_monitor,
         fix_nan_callback,
-        log_gen_img_callback
+        log_gen_img_callback,
     ]
 
     logger = hydra.utils.instantiate(cfg.logger)
