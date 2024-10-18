@@ -132,10 +132,10 @@ size = (int(size[0]), int(size[1]))
 print(f"video size: {size}")
 
 vae = VideoVAE().to(args.device)
-vae = torch.nn.DataParallel(vae)
+vae = torch.compile(vae)
 text_encoder = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large", torch_dtype=torch.bfloat16).encoder.to(args.device)
 text_encoder.eval()
-text_encoder = torch.nn.DataParallel(text_encoder)
+text_encoder = torch.compile(text_encoder)
 tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 
 dataset_path = os.path.split(args.path)[0]
