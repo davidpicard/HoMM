@@ -7,7 +7,7 @@ vid_size: ${data.size}
 vid_length: ${data.length}
 kernel_s: 2
 kernel_t: 2
-n_layers: 28
+n_layers: 20
 order: 2
 order_expand: 2
 ffw_expand: 2

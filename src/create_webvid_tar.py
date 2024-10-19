@@ -32,6 +32,13 @@ class TarWriter():
         self.current_filename = None
         self.current_sample_count = 0
 
+    def resume(self):
+        indexfile = f"{self.dir}/{self.split}index.json"
+        if os.path.isfile(indexfile):
+            with open(indexfile, "r") as f:
+                self.filelist = json.load(f)
+                print(f"resumed {len(self.filelist)} chunks from {self.dir}/{self.split}index.json")
+
     def check_chunk_size(self):
         if (self.current_tar is None) or (self.current_sample_count >= self.chunks_size):
             self.add_tarfile()
@@ -64,20 +71,28 @@ class TarWriter():
 
 from torch.utils.data.dataset import Dataset
 class WebvidDataset(Dataset):
-    def __init__(self, path, size, nb_frames):
+    def __init__(self, path, size, nb_frames, start, end):
         dataset_path = os.path.split(args.path)[0]
         print(f"dataset path: {dataset_path}")
+        if end < 0:
+            end = 999999999
         self.files = []
         self.txt = []
+        count = 0
         with open(path, "r") as csvfile:
             reader = csv.reader(csvfile, delimiter=',')
             reader.__next__()  # skip first line
             for row in reader:
-                self.files.append(f"{dataset_path}/{row[-1]}")
-                self.txt.append(row[-2])
+                if count >= start:
+                    self.files.append(f"{dataset_path}/{row[-1]}")
+                    self.txt.append(row[-2])
+                count += 1
+                if count > end:
+                    break
         self.total_number = len(self.files)
         self.size = size
         self.nb_frames = nb_frames
+        print(f"Loading {self.total_number} files at {dataset_path} from {start} to {end}")
 
     def __len__(self):
         return self.total_number
@@ -115,6 +130,8 @@ parser.add_argument("--temp-chunk-size", type=int, default=8)
 parser.add_argument("--chunk-size", type=int, default=100)
 parser.add_argument("--split", type=str, default="train")
 parser.add_argument("--num-workers", type=int, default=2)
+parser.add_argument("--start", type=int, default=0)
+parser.add_argument("--end", type=int, default=-1)
 
 args = parser.parse_args()
 
@@ -141,10 +158,11 @@ tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 dataset_path = os.path.split(args.path)[0]
 print(f"dataset path: {dataset_path}")
 out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split)
+out.resume()
 
 count = 0
 
-data = WebvidDataset(args.path, size=size, nb_frames=args.nb_frames)
+data = WebvidDataset(args.path, size=size, nb_frames=args.nb_frames, start=args.start, end=args.end)
 data = DataLoader(data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 
 for batch in tqdm(data):
