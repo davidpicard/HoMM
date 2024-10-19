@@ -31,13 +31,21 @@ class TarWriter():
         self.current_tar = None
         self.current_filename = None
         self.current_sample_count = 0
+        self.index_num = ""
 
-    def resume(self):
+    def resume(self, start):
         indexfile = f"{self.dir}/{self.split}index.json"
         if os.path.isfile(indexfile):
-            with open(indexfile, "r") as f:
-                self.filelist = json.load(f)
-                print(f"resumed {len(self.filelist)} chunks from {self.dir}/{self.split}index.json")
+            index_num = 0
+            while os.path.isfile(f"{self.dir}/{self.split}index{index_num}.json"):
+                index_num += 1
+            self.index_num = index_num
+            while start > 0:
+                current_filename = f"{self.dir}/{self.split}chunk_{len(self.filelist)}.tar"
+                self.filelist.append({"filename": current_filename,
+                                      "count": min(start, self.chunks_size)})
+                start -= self.chunks_size
+            print(f"resumed {len(self.filelist)} chunks from {self.dir}/{self.split}index{self.index_num}.json")
 
     def check_chunk_size(self):
         if (self.current_tar is None) or (self.current_sample_count >= self.chunks_size):
@@ -55,7 +63,7 @@ class TarWriter():
             self.current_tar.close()
             self.filelist.append({"filename":self.current_filename,
                                   "count":self.current_sample_count})
-            with open(f"{self.dir}/{self.split}index.json", "w") as f:
+            with open(f"{self.dir}/{self.split}index{self.index_num}.json", "w") as f:
                 json.dump(self.filelist, f)
             self.current_tar = None
             self.current_filename = None
@@ -87,7 +95,7 @@ class WebvidDataset(Dataset):
                     self.files.append(f"{dataset_path}/{row[-1]}")
                     self.txt.append(row[-2])
                 count += 1
-                if count > end:
+                if count >= end:
                     break
         self.total_number = len(self.files)
         self.size = size
@@ -158,7 +166,7 @@ tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 dataset_path = os.path.split(args.path)[0]
 print(f"dataset path: {dataset_path}")
 out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split)
-out.resume()
+out.resume(args.start)
 
 count = 0
 

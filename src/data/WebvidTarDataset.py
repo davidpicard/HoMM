@@ -106,26 +106,52 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dir", type=str, required=True)
     parser.add_argument("--split", type=str, default="train")
+    parser.add_argument("--repair", action="store_true")
     args = parser.parse_args()
 
-    train = WebvidTarDataset(args.dir, split=args.split)
-    train = DataLoader(train, batch_size=1, shuffle=True, num_workers=2)
+    if args.repair:
+        print(f"Trying to repair {args.dir} split {args.split}")
+        import os, re
+        filelist = []
+        if args.split == "train":
+            split = ""
+            pattern = r"^.*\.tar"
+        elif args.split == "val":
+            split = "val_"
+            pattern = r"val.*\.tar"
+        else:
+            print(f"Invalid split error: {args.split}")
+            exit(-1)
+        files = [f for f in os.listdir(args.dir) if re.match(pattern, f)]
+        files.sort()
+        for f in files:
+            with tarfile.open(f"{args.dir}/{f}", "r") as tar:
+                members = tar.getmembers()
+                filelist.append({"filename":f"{args.dir}/{f}",
+                                      "count":len(members)})
+        print(f"found: {filelist}")
+        with open(f"{args.dir}/{split}index.json", "w") as f:
+            json.dump(filelist, f)
+    else:
 
-    print(f"train length: {len(train)}")
+        train = WebvidTarDataset(args.dir, split=args.split)
+        train = DataLoader(train, batch_size=1, shuffle=True, num_workers=2)
 
-    plt.ion()
+        print(f"train length: {len(train)}")
 
-    for samples in train:
-        frames, text, mask = samples
-        frames = frames.to("cuda").squeeze()
-        print(f"sample shape: {frames.shape}")
+        plt.ion()
 
-        with torch.autocast(device_type="cuda", dtype=torch.float, enabled=True):
-            decoded = vae_decode_video(frames, vae)
-        decoded = decoded.permute(1,0,2,3).detach().cpu()
-        for img in decoded:
-            plt.clf()
-            plt.imshow(einops.rearrange(img.cpu(), "c h w -> h w c"))
-            plt.title(f"text latent shape: {text.shape} mask: {mask.sum()}")
-            plt.show()
-            plt.pause(0.0625)
+        for samples in train:
+            frames, text, mask = samples
+            frames = frames.to("cuda").squeeze()
+            print(f"sample shape: {frames.shape}")
+
+            with torch.autocast(device_type="cuda", dtype=torch.float, enabled=True):
+                decoded = vae_decode_video(frames, vae)
+            decoded = decoded.permute(1,0,2,3).detach().cpu()
+            for img in decoded:
+                plt.clf()
+                plt.imshow(einops.rearrange(img.cpu(), "c h w -> h w c"))
+                plt.title(f"text latent shape: {text.shape} mask: {mask.sum()}")
+                plt.show()
+                plt.pause(0.0625)
