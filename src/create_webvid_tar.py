@@ -191,9 +191,9 @@ for batch in tqdm(data):
         for i in range(video_latents.shape[0]):
             name = f"sample_{count}.npz"
             buffer = io.BytesIO()
-            np.savez(buffer, video_latents[i].float().cpu().numpy(),
-                     text_latents[i].squeeze().float().cpu().numpy(),
-                     attention_mask[i].squeeze().float().cpu().numpy(),
+            np.savez(buffer, video_latents[i].to(torch.float16).cpu().numpy(),
+                     text_latents[i].squeeze().to(torch.float16).cpu().numpy(),
+                     attention_mask[i].squeeze().to(torch.float16).cpu().numpy(),
                      txts[i])
             buffer.seek(0)
             out.add_sample(name, buffer)
