@@ -3,7 +3,7 @@ import os
 
 import einops
 import torch
-from model.network.imagediffusion import ClassConditionalDiHpp, DiHpp_models, DiH_models
+from model.network.imagediffusion import DiHpp_models, DiH_models, ClassConditionalDiH
 from model.diffusion import DiffusionModule, denormalize, VAE
 from model.sampler.sampler import *
 from torchvision.utils import save_image
@@ -80,7 +80,7 @@ elif args.model_name == "DiHpp-XL/2":
     model = DiHpp_models["DiHpp-XL/2"](input_dim=4, n_classes=1000, im_size=args.size//8)
     print("model: DiHpp-XL/2")
 else:
-    model = ClassConditionalDiHpp(input_dim=4,
+    model = ClassConditionalDiH(input_dim=4,
                               n_classes=1000,
                               n_timesteps=args.time_emb,
                               im_size=args.size//8,
