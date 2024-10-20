@@ -346,19 +346,19 @@ class ClassConditionalDiH(nn.Module):
         return out
 
 def DiH_S_2(**kwargs):
-    return ClassConditionalDiH(n_layers=12, dim=384, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+    return ClassConditionalDiH(n_layers=12, dim=384, kernel_size=2, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiH_S_4(**kwargs):
-    return ClassConditionalDiH(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
+    return ClassConditionalDiH(n_layers=12, dim=384, kernel_size=4, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiH_B_2(**kwargs):
-    return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, **kwargs)
+    return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=2, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiH_B_4(**kwargs):
-    return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=4, order=2, order_expand=2, ffw_expand=3, **kwargs)
+    return ClassConditionalDiH(n_layers=12, dim=768, kernel_size=4, order=2, order_expand=2, ffw_expand=3, n_timesteps=1000, **kwargs)
 def DiH_L_2(**kwargs):
     return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
 def DiH_L_4(**kwargs):
-    return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=4, order=2, order_expand=2, ffw_expand=2, **kwargs)
+    return ClassConditionalDiH(n_layers=24, dim=1024, kernel_size=4, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
 def DiH_XL_2(**kwargs):
-    return ClassConditionalDiH(n_layers=28, dim=1152, kernel_size=2, order=2, order_expand=2, ffw_expand=2, **kwargs)
+    return ClassConditionalDiH(n_layers=28, dim=1152, kernel_size=2, order=2, order_expand=2, ffw_expand=2, n_timesteps=1000, **kwargs)
 
 DiH_models = {
     'DiH-XL/2': DiH_XL_2, # 'DiT-XL/4': DiT_XL_4,  'DiT-XL/8': DiT_XL_8,
