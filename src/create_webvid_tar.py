@@ -17,7 +17,7 @@ from utils.video import read_video, vae_encode_video, VideoVAE
 
 
 class TarWriter():
-    def __init__(self, dirname, chunk_size=100, split="train"):
+    def __init__(self, dirname, chunk_size=100, split="train", tar_offset=0):
         import os, io, tarfile, json
         self.dir = dirname
         self.chunks_size = chunk_size
@@ -32,6 +32,7 @@ class TarWriter():
         self.current_filename = None
         self.current_sample_count = 0
         self.index_num = ""
+        self.tar_offset = tar_offset
 
     def resume(self, start):
         indexfile = f"{self.dir}/{self.split}index.json"
@@ -53,7 +54,7 @@ class TarWriter():
 
     def add_tarfile(self):
         self.close()
-        self.current_filename = f"{self.dir}/{self.split}chunk_{len(self.filelist)}.tar"
+        self.current_filename = f"{self.dir}/{self.split}chunk_{self.tar_offset+len(self.filelist)}.tar"
         self.current_tar = tarfile.open(self.current_filename, "w")
         self.current_sample_count = 0
         print(f"*** open {self.current_filename}")
@@ -168,7 +169,7 @@ tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 
 dataset_path = os.path.split(args.path)[0]
 print(f"dataset path: {dataset_path}")
-out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split)
+out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split, tar_offset=args.start//args.chunk_size)
 out.resume(args.start)
 
 count = 0
