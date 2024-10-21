@@ -115,7 +115,7 @@ if __name__ == "__main__":
         filelist = []
         if args.split == "train":
             split = ""
-            pattern = r"^.*\.tar"
+            pattern = r"^(?!val).*\.tar"
         elif args.split == "val":
             split = "val_"
             pattern = r"val.*\.tar"

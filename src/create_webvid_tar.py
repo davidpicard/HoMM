@@ -93,7 +93,10 @@ class WebvidDataset(Dataset):
             for row in reader:
                 if count >= start:
                     self.files.append(f"{dataset_path}/{row[-1]}")
-                    self.txt.append(row[-2])
+                    prompt = row[-2]
+                    if "shutterstock" in row[1]:
+                        prompt = f"{prompt}, shutterstock watermark"
+                    self.txt.append(prompt)
                 count += 1
                 if count >= end:
                     break
@@ -120,7 +123,7 @@ class WebvidDataset(Dataset):
         except:
             print(f"buggy video: {video_path}")
             video = torch.zeros((3, self.nb_frames, self.size[0], self.size[1]))
-        return {"video": video, "txt": txt}
+        return {"video": video, "txt": txt, "name": video_path}
 
 
 
@@ -177,6 +180,7 @@ for batch in tqdm(data):
     # print(f"batch: {batch}")
     videos = batch["video"]
     txts = batch["txt"]
+    name = batch["name"].split(".")[0]
     with torch.autocast(device_type=args.device, dtype=precision_type, enabled=True):
         videos = videos.to(args.device)
         video_latents = vae_encode_video(videos, vae, temp_chunk_size=args.temp_chunk_size)
@@ -189,7 +193,7 @@ for batch in tqdm(data):
         text_latents = text_encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.detach()
 
         for i in range(video_latents.shape[0]):
-            name = f"sample_{count}.npz"
+            name = f"{name}.npz"
             buffer = io.BytesIO()
             np.savez(buffer, video_latents[i].to(torch.float16).cpu().numpy(),
                      text_latents[i].squeeze().to(torch.float16).cpu().numpy(),
