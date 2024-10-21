@@ -180,7 +180,7 @@ for batch in tqdm(data):
     # print(f"batch: {batch}")
     videos = batch["video"]
     txts = batch["txt"]
-    name = batch["name"].split(".")[0]
+    names = batch["name"]
     with torch.autocast(device_type=args.device, dtype=precision_type, enabled=True):
         videos = videos.to(args.device)
         video_latents = vae_encode_video(videos, vae, temp_chunk_size=args.temp_chunk_size)
@@ -193,7 +193,7 @@ for batch in tqdm(data):
         text_latents = text_encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.detach()
 
         for i in range(video_latents.shape[0]):
-            name = f"{name}.npz"
+            name = f"{names[i].split(".")[0]}.npz"
             buffer = io.BytesIO()
             np.savez(buffer, video_latents[i].to(torch.float16).cpu().numpy(),
                      text_latents[i].squeeze().to(torch.float16).cpu().numpy(),
