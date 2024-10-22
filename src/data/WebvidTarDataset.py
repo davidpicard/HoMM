@@ -96,6 +96,7 @@ if __name__ == "__main__":
     import torch
     import matplotlib.pyplot as plt
     import einops
+    from tqdm import tqdm
     vae = VideoVAE()
     vae = vae.to("cuda")
     vae.eval()
@@ -124,7 +125,7 @@ if __name__ == "__main__":
             exit(-1)
         files = [f for f in os.listdir(args.dir) if re.match(pattern, f)]
         files.sort()
-        for f in files:
+        for f in tqdm(files):
             with tarfile.open(f"{args.dir}/{f}", "r") as tar:
                 members = tar.getmembers()
                 filelist.append({"filename":f"{args.dir}/{f}",
