@@ -105,9 +105,6 @@ class ClassConditionalDiT(nn.Module):
             m = l.gate_mlp[-1]
             nn.init.zeros_(m.weight)
             nn.init.constant_(m.bias, 0.)
-        #pos emb
-        pos_emb = get_2d_sincos_pos_embed(self.pos_emb.shape[-1], self.n_patches)
-        self.pos_emb.data.copy_(torch.from_numpy(pos_emb).float().unsqueeze(0))
         # patch and time emb
         nn.init.normal_(self.classes_emb.weight, std=0.02)
         nn.init.normal_(self.time_emb[0].weight, std=0.02)
