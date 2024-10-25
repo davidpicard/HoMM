@@ -44,9 +44,8 @@ for d in dims:
 
         model.zero_grad()
         l2 = (target - y_pred).square().mean()
-        if args.backward:
-            l2.backward()
-            opt.step()
+        l2.backward()
+        opt.step()
 
     print(f"Test d: {d}")
     count = []
@@ -104,9 +103,8 @@ for d in dims:
 
         model.zero_grad()
         l2 = (target - y_pred).square().mean()
-        if args.backward:
-            l2.backward()
-            opt.step()
+        l2.backward()
+        opt.step()
 
 
     print(f"Test d: {d}")
