@@ -150,40 +150,40 @@ class ClassConditionalDiT(nn.Module):
 
 
 def DiT_XL_2(**kwargs):
-    return ClassConditionalDiT(n_layers=28, dim=1152, kernel_size=2, n_heads=16, **kwargs)
+    return ClassConditionalDiT(n_layers=28, dim=1152, kernel_size=2, n_heads=16, n_timesteps=1000, **kwargs)
 
 def DiT_XL_4(**kwargs):
-    return ClassConditionalDiT(n_layers=28, dim=1152, kernel_size=4, n_heads=16, **kwargs)
+    return ClassConditionalDiT(n_layers=28, dim=1152, kernel_size=4, n_heads=16, n_timesteps=1000, **kwargs)
 
 def DiT_XL_8(**kwargs):
-    return ClassConditionalDiT(n_layers=28, dim=1152, kernel_size=8, n_heads=16, **kwargs)
+    return ClassConditionalDiT(n_layers=28, dim=1152, kernel_size=8, n_heads=16, n_timesteps=1000, **kwargs)
 
 def DiT_L_2(**kwargs):
-    return ClassConditionalDiT(n_layers=24, dim=1024, kernel_size=2, n_heads=16, **kwargs)
+    return ClassConditionalDiT(n_layers=24, dim=1024, kernel_size=2, n_heads=16, n_timesteps=1000, **kwargs)
 
 def DiT_L_4(**kwargs):
-    return ClassConditionalDiT(n_layers=24, dim=1024, kernel_size=4, n_heads=16, **kwargs)
+    return ClassConditionalDiT(n_layers=24, dim=1024, kernel_size=4, n_heads=16, n_timesteps=1000, **kwargs)
 
 def DiT_L_8(**kwargs):
-    return ClassConditionalDiT(n_layers=24, dim=1024, kernel_size=8, n_heads=16, **kwargs)
+    return ClassConditionalDiT(n_layers=24, dim=1024, kernel_size=8, n_heads=16, n_timesteps=1000, **kwargs)
 
 def DiT_B_2(**kwargs):
-    return ClassConditionalDiT(n_layers=12, dim=768, kernel_size=2, n_heads=12, **kwargs)
+    return ClassConditionalDiT(n_layers=12, dim=768, kernel_size=2, n_heads=12, n_timesteps=1000, **kwargs)
 
 def DiT_B_4(**kwargs):
-    return ClassConditionalDiT(n_layers=12, dim=768, kernel_size=4, n_heads=12, **kwargs)
+    return ClassConditionalDiT(n_layers=12, dim=768, kernel_size=4, n_heads=12, n_timesteps=1000, **kwargs)
 
 def DiT_B_8(**kwargs):
-    return ClassConditionalDiT(n_layers=12, dim=768, kernel_size=8, n_heads=12, **kwargs)
+    return ClassConditionalDiT(n_layers=12, dim=768, kernel_size=8, n_heads=12, n_timesteps=1000, **kwargs)
 
 def DiT_S_2(**kwargs):
-    return ClassConditionalDiT(n_layers=12, dim=384, kernel_size=2, n_heads=6, **kwargs)
+    return ClassConditionalDiT(n_layers=12, dim=384, kernel_size=2, n_heads=6, n_timesteps=1000, **kwargs)
 
 def DiT_S_4(**kwargs):
-    return ClassConditionalDiT(n_layers=12, dim=384, kernel_size=4, n_heads=6, **kwargs)
+    return ClassConditionalDiT(n_layers=12, dim=384, kernel_size=4, n_heads=6, n_timesteps=1000, **kwargs)
 
 def DiT_S_8(**kwargs):
-    return ClassConditionalDiT(n_layers=12, dim=384, kernel_size=8, n_heads=6, **kwargs)
+    return ClassConditionalDiT(n_layers=12, dim=384, kernel_size=8, n_heads=6, n_timesteps=1000, **kwargs)
 
 
 DiT_models = {
