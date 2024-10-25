@@ -56,6 +56,7 @@ for d in dims:
     print(f"Test d: {d}")
     start_time = time.perf_counter()
     for b in tqdm(range(loop)):
+
         x = torch.randn((batch_size, 4, d, d)).to(device)
         c = torch.randint(0, 1000, (batch_size,)).to(device)
         t = torch.randint(0, 1000, (batch_size,)).to(device)
