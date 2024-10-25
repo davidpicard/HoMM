@@ -31,12 +31,7 @@ for d in dims:
 
     model = DiH_models[f"DiH-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
     model = model.to(device)
-    if not args.backward:
-        print("forward only mode")
-        # model.eval()
-    else:
-        print("forward+backward mode")
-        opt = AdamW(model.parameters(), lr=0.0001)
+    opt = AdamW(model.parameters(), lr=0.0001)
 
     # warmup
     print(f"Warmup d: {d}")
@@ -54,28 +49,37 @@ for d in dims:
             opt.step()
 
     print(f"Test d: {d}")
-    start_time = time.perf_counter()
+    count = []
     for b in tqdm(range(loop)):
-
         x = torch.randn((batch_size, 4, d, d)).to(device)
         c = torch.randint(0, 1000, (batch_size,)).to(device)
         t = torch.randint(0, 1000, (batch_size,)).to(device)
 
+        start_time = time.perf_counter()
         y_pred = model(x, c, t)
+        tmp = y_pred.cpu()
+        if not args.backward:
+            end_time = time.perf_counter()
+            elapsed = end_time - start_time
 
         model.zero_grad()
         l2 = (target - y_pred).square().mean()
+        l2.backward()
+        opt.step()
         if args.backward:
-            l2.backward()
-            opt.step()
-    end_time = time.perf_counter()
-    elapsed = end_time - start_time
+            end_time = time.perf_counter()
+            elapsed = end_time - start_time
+
+        count.append(elapsed)
+    elapsed = np.sum(count)
     print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
     results.append(elapsed/batch_size/loop)
 
 print(f"DiH images: {dims*16}")
 print(f"DiH tokens: {dims**2}")
 print(f"DiH s/image: {results}")
+for i in len(dims):
+    print(f"({dims[i]}, {results[i]})")
 
 results = []
 
@@ -106,25 +110,35 @@ for d in dims:
 
 
     print(f"Test d: {d}")
-    start_time = time.perf_counter()
+    count = []
     for b in tqdm(range(loop)):
         x = torch.randn((batch_size, 4, d, d)).to(device)
         c = torch.randint(0, 1000, (batch_size,)).to(device)
         t = torch.randint(0, 1000, (batch_size,)).to(device)
 
+        start_time = time.perf_counter()
         y_pred = model(x, c, t)
+        tmp = y_pred[0].cpu()
+        if not args.backward:
+            end_time = time.perf_counter()
+            elapsed = end_time - start_time
 
         model.zero_grad()
         l2 = (target - y_pred).square().mean()
+        l2.backward()
+        opt.step()
         if args.backward:
-            l2.backward()
-            opt.step()
-    end_time = time.perf_counter()
-    elapsed = end_time - start_time
+            end_time = time.perf_counter()
+            elapsed = end_time - start_time
+
+        count.append(elapsed)
+    elapsed = np.sum(count)
     print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
     results.append(elapsed/batch_size/loop)
 
 print(f"DiT images: {dims*16}")
 print(f"DiT tokens: {dims**2}")
 print(f"DiT s/image: {results}")
+for i in len(dims):
+    print(f"({dims[i]}, {results[i]})")
 
