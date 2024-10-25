@@ -31,7 +31,10 @@ for d in dims:
 
     model = DiH_models[f"DiH-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
     model = model.to(device)
-    opt = AdamW(model.parameters(), lr=0.0001)
+    if not args.backward:
+        model.eval()
+    else:
+        opt = AdamW(model.parameters(), lr=0.0001)
 
     # warmup
     print(f"Warmup d: {d}")
