@@ -32,8 +32,10 @@ for d in dims:
     model = DiH_models[f"DiH-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
     model = model.to(device)
     if not args.backward:
+        print("forward only mode")
         model.eval()
     else:
+        print("forward+backward mode")
         opt = AdamW(model.parameters(), lr=0.0001)
 
     # warmup
@@ -45,8 +47,8 @@ for d in dims:
 
         y_pred = model(x, c, t)
 
+        model.zero_grad()
         if args.backward:
-            opt.zero_grad()
             l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
@@ -60,8 +62,8 @@ for d in dims:
 
         y_pred = model(x, c, t)
 
+        model.zero_grad()
         if args.backward:
-            opt.zero_grad()
             l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
@@ -95,8 +97,8 @@ for d in dims:
 
         y_pred = model(x, c, t)
 
+        model.zero_grad()
         if args.backward:
-            opt.zero_grad()
             l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
@@ -111,8 +113,8 @@ for d in dims:
 
         y_pred = model(x, c, t)
 
+        model.zero_grad()
         if args.backward:
-            opt.zero_grad()
             l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
