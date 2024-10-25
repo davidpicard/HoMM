@@ -77,7 +77,7 @@ for d in dims:
 print(f"DiH images: {dims*16}")
 print(f"DiH tokens: {dims**2}")
 print(f"DiH s/image: {results}")
-for i in len(dims):
+for i in range(len(dims)):
     print(f"({dims[i]}, {results[i]})")
 
 results = []
@@ -137,6 +137,6 @@ for d in dims:
 print(f"DiT images: {dims*16}")
 print(f"DiT tokens: {dims**2}")
 print(f"DiT s/image: {results}")
-for i in len(dims):
+for i in range(len(dims)):
     print(f"({dims[i]}, {results[i]})")
 
