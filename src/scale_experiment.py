@@ -12,9 +12,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--batch-size", type=int, default=4)
 parser.add_argument("--loop", type=int, default=100)
 parser.add_argument("--model", type=str, default="XL/2")
+parser.add_argument("--backward", type=bool, default=False)
 args = parser.parse_args()
 
-dims = np.array([16, 24, 32, 48, 64, 96, 128])
+dims = np.array([16, 24, 32, 48, 64, 96, 128, 192, 256])
 batch_size = args.batch_size
 loop = args.loop
 model_name = args.model
@@ -39,16 +40,14 @@ for d in dims:
         c = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
         t = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
 
-        opt.zero_grad()
-
         y_pred = model(x, c, t)
-        l2 = (target - y_pred).square().mean()
 
-        l2.backward()
-        opt.step()
+        if args.backward:
+            opt.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
 
-
-    # warmup
     print(f"Test d: {d}")
     start_time = time.perf_counter()
     for b in tqdm(range(loop)):
@@ -56,13 +55,13 @@ for d in dims:
         c = torch.randint(0, 1000, (batch_size,)).to(device)
         t = torch.randint(0, 1000, (batch_size,)).to(device)
 
-        opt.zero_grad()
-
         y_pred = model(x, c, t)
-        l2 = (target - y_pred).square().mean()
 
-        l2.backward()
-        opt.step()
+        if args.backward:
+            opt.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
     end_time = time.perf_counter()
     elapsed = end_time - start_time
     print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
@@ -91,16 +90,15 @@ for d in dims:
         c = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
         t = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
 
-        opt.zero_grad()
-
         y_pred = model(x, c, t)
-        l2 = (target - y_pred).square().mean()
 
-        l2.backward()
-        opt.step()
+        if args.backward:
+            opt.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
 
 
-    # warmup
     print(f"Test d: {d}")
     start_time = time.perf_counter()
     for b in tqdm(range(loop)):
@@ -108,13 +106,13 @@ for d in dims:
         c = torch.randint(0, 1000, (batch_size,)).to(device)
         t = torch.randint(0, 1000, (batch_size,)).to(device)
 
-        opt.zero_grad()
-
         y_pred = model(x, c, t)
-        l2 = (target - y_pred).square().mean()
 
-        l2.backward()
-        opt.step()
+        if args.backward:
+            opt.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
     end_time = time.perf_counter()
     elapsed = end_time - start_time
     print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
