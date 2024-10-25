@@ -79,7 +79,6 @@ class ClassConditionalDiT(nn.Module):
         # for diffusers
         self.in_channels = 3
         self.sample_size = (self.n_patches, self.n_patches)
-        self.pos_emb = nn.Parameter(torch.zeros((1, self.n_patches ** 2, dim)), requires_grad=False)
         self.in_conv = nn.Conv2d(input_dim, dim, kernel_size=kernel_size, stride=kernel_size, bias=True)
         self.layers = nn.ModuleList(
             [DiTBlock(dim, n_heads) for _ in range(n_layers)])
@@ -123,9 +122,13 @@ class ClassConditionalDiT(nn.Module):
 
         # patchify
         x = self.in_conv(img)
+        b, c, h, w = x.shape
+        pos_emb = sincos_embedding_2d(self.n_patches, self.n_patches, self.dim).to(x.device)
+        pos_emb = einops.rearrange(pos_emb, "b h w d -> b (h w) d")
+
         x = einops.rearrange(x, 'b d h w -> b (h w) d')
         b, n, d = x.shape
-        x = x + self.pos_emb * torch.ones((b, 1, 1)).to(x.device)
+        x = x + pos_emb * torch.ones((b, 1, 1)).to(x.device)
 
         # embed time
         time = torch.einsum("b, n -> bn", time, self.freqs)
