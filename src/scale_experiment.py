@@ -33,7 +33,7 @@ for d in dims:
     model = model.to(device)
     if not args.backward:
         print("forward only mode")
-        model.eval()
+        # model.eval()
     else:
         print("forward+backward mode")
         opt = AdamW(model.parameters(), lr=0.0001)
@@ -48,8 +48,8 @@ for d in dims:
         y_pred = model(x, c, t)
 
         model.zero_grad()
+        l2 = (target - y_pred).square().mean()
         if args.backward:
-            l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
 
@@ -63,8 +63,8 @@ for d in dims:
         y_pred = model(x, c, t)
 
         model.zero_grad()
+        l2 = (target - y_pred).square().mean()
         if args.backward:
-            l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
     end_time = time.perf_counter()
@@ -98,8 +98,8 @@ for d in dims:
         y_pred = model(x, c, t)
 
         model.zero_grad()
+        l2 = (target - y_pred).square().mean()
         if args.backward:
-            l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
 
@@ -114,8 +114,8 @@ for d in dims:
         y_pred = model(x, c, t)
 
         model.zero_grad()
+        l2 = (target - y_pred).square().mean()
         if args.backward:
-            l2 = (target - y_pred).square().mean()
             l2.backward()
             opt.step()
     end_time = time.perf_counter()
