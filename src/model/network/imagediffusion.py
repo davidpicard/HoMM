@@ -582,20 +582,20 @@ def get_1d_sincos_pos_embed_from_grid(embed_dim, pos):
 
 import math
 def sincos_embedding_2d(h, w, d, r=0):
-    freqs = torch.log(1+torch.linspace(0, 2, d//4+1)*math.pi/2)[1:]
+    freqs = torch.linspace(0.5, 2, d//4)
     f = einops.rearrange(freqs, "(b n d) -> b n d", b=1, n=1)
 
     x = torch.linspace(0, 1, w)
     x = einops.rearrange(x, "(b n d) -> b n d", b=1, d=1)
-    s = (x * f * math.pi).sin()
-    c = (x * f * math.pi).cos()
+    s = (x * f * math.pi+f).sin()
+    c = (x * f * math.pi+f).cos()
     x = torch.cat([s, c], dim=-1)
     x = einops.rearrange(x, "b (h w) d -> b h w d", h=1).repeat([1, h, 1, 1])
 
     y = torch.linspace(0, 1, h)
     y = einops.rearrange(y, "(b n d) -> b n d", b=1, d=1)
-    s = (y * f * math.pi).sin()
-    c = (y * f * math.pi).cos()
+    s = (y * f * math.pi+f).sin()
+    c = (y * f * math.pi+f).cos()
     y = torch.cat([s, c], dim=-1)
     y = einops.rearrange(y, "b (h w) d -> b h w d", w=1).repeat([1, 1, w, 1])
 
