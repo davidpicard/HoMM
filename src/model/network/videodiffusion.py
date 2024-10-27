@@ -337,36 +337,33 @@ class TextVideoDiH(nn.Module):
 
         return out
 
-
-
 import math
 def sincos_embedding_3d(t, h, w, d, r=0):
-    f_max = d // 4
-    freqs = torch.arange(f_max) * 2 + 1
+    freqs = torch.linspace(0.5, 2, d//4)
     f = einops.rearrange(freqs, "(b n d) -> b n d", b=1, n=1)
 
     n = torch.linspace(0, 1, t)
     n = einops.rearrange(n, "(b n d) -> b n d", b=1, d=1)
-    s = (n * f * math.pi).sin()
-    c = (n * f * math.pi).cos()
+    s = (n * f * math.pi+f).sin()
+    c = (n * f * math.pi+f).cos()
     n = torch.cat([s, c], dim=-1)
     n = einops.rearrange(n, "b (n h w) d -> b n h w d", h=1, w=1).repeat([1, 1, h, w, 1])
 
-    f_max = d // 8
-    freqs = torch.arange(f_max) * 2 + 1
+
+    freqs = torch.linspace(0.5, 2, d//8)
     f = einops.rearrange(freqs, "(b n d) -> b n d", b=1, n=1)
 
     x = torch.linspace(0, 1, w)
     x = einops.rearrange(x, "(b n d) -> b n d", b=1, d=1)
-    s = (x * f * math.pi).sin()
-    c = (x * f * math.pi).cos()
+    s = (x * f * math.pi+f).sin()
+    c = (x * f * math.pi+f).cos()
     x = torch.cat([s, c], dim=-1)
     x = einops.rearrange(x, "b (n h w) d -> b n h w d", n=1, h=1).repeat([1, t, h, 1, 1])
 
     y = torch.linspace(0, 1, h)
     y = einops.rearrange(y, "(b n d) -> b n d", b=1, d=1)
-    s = (y * f * math.pi).sin()
-    c = (y * f * math.pi).cos()
+    s = (y * f * math.pi+f).sin()
+    c = (y * f * math.pi+f).cos()
     y = torch.cat([s, c], dim=-1)
     y = einops.rearrange(y, "b (n h w) d -> b n h w d", n=1, w=1).repeat([1, t, 1, w, 1])
 
