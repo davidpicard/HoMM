@@ -16,7 +16,8 @@ trainer:
   num_nodes: ${computer.num_nodes}
   precision: ${computer.precision}
   gradient_clip_val: 1.0
-  
+  gradient_clip_algorithm: value
+
 checkpoints:
   _target_: lightning.pytorch.callbacks.ModelCheckpoint
   dirpath: ${checkpoint_dir}/${experiment_name}
