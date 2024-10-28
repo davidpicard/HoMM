@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import torch._dynamo
+torch._dynamo.config.suppress_errors = True
 
 @torch.compile
 def gelu(x: torch.Tensor):
