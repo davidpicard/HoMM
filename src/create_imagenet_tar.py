@@ -9,6 +9,42 @@ from torchvision.datasets import ImageNet
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 import io
+from PIL import Image
+from concurrent.futures import ThreadPoolExecutor
+
+class FilteredImageNet(ImageNet):
+    def __init__(self, root, split='train', transform=None, target_transform=None, min_resolution=512):
+        super().__init__(root, split=split, transform=transform, target_transform=target_transform)
+        self.min_resolution = min_resolution
+        self.filtered_indices = self._get_filtered_indices()
+
+    def _get_filtered_indices(self):
+        print(f"scanning {len(self.samples)} for images larger than {self.min_resolution}")
+        filtered_indices = []
+
+        def check_image_size(i):
+            path, _ = self.samples[i]
+            with Image.open(path) as img:
+                width, height = img.size
+                if max(width, height) >= self.min_resolution:
+                    return i
+            return None
+
+        with ThreadPoolExecutor() as executor:
+            results = list(tqdm(executor.map(check_image_size, range(len(self.samples))), total=len(self.samples)))
+
+        filtered_indices = [i for i in results if i is not None]
+
+        return filtered_indices
+
+    def __len__(self):
+        return len(self.filtered_indices)
+
+    def __getitem__(self, idx):
+        idx = self.filtered_indices[idx]
+        image, label = super().__getitem__(idx)
+        return image, label
+
 
 parser = ArgumentParser()
 parser.add_argument("--imagenet-path", type=str, required=True)
@@ -19,7 +55,7 @@ parser.add_argument("--precision", type=str, default="bf16")
 parser.add_argument("--batch-size", type=int, default=4)
 parser.add_argument("--workers", type=int, default=8)
 parser.add_argument("--size", type=int, default=512)
-parser.add_argument("--quantization-scale", type=float, default=8.0)
+parser.add_argument("--quantization-scale", type=float, default=1.0)
 parser.add_argument("--chunk-size", type=int, default=10000)
 parser.add_argument("--target-precision", type=str, default="fp16")
 parser.add_argument("--split", type=str, default="train")
@@ -50,10 +86,11 @@ tr = [
 ]
 transform_train = transforms.Compose(tr)
 
-dataset = ImageNet(
+dataset = FilteredImageNet(
     args.imagenet_path,
     transform=transform_train,
-    split=args.split
+    split=args.split,
+    min_resolution=args.size
 )
 dataset = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
@@ -125,12 +162,6 @@ for img, lbl in tqdm(dataset):
         dist = vae.encode(img).latent_dist
         latent_mean = dist.mean * vae.config.scaling_factor
         latent_std = dist.std * vae.config.scaling_factor
-    if args.target_precision == "int8":
-        max_m = latent_mean.abs().max() if latent_mean.abs().max() > max_m else max_m
-        max_s = latent_std.abs().max() if latent_std.abs().max() > max_s else max_s
-        latent_mean_q = (latent_mean * quantization_scale).clamp(-127, 127).to(torch.int8)
-        latent_std_q = (latent_std * 1000 * quantization_scale).clamp(-127, 127).to(torch.int8)
-    else:
         latent_mean_q = latent_mean.to(torch.float16)
         latent_std_q = (latent_std*1000).to(torch.float16)
 

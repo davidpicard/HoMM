@@ -172,7 +172,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     train = TarDataset(args.dir)
-    train = DataLoader(train, batch_size=4, shuffle=True, num_workers=2)
+    train = DataLoader(train, batch_size=4, shuffle=False, num_workers=2)
 
     plt.ion()
 
