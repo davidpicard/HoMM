@@ -54,13 +54,15 @@ class LogGenVideo(Callback):
                                       dtype=vid.dtype,
                                       layout=vid.layout,
                                       device=device)
+                temporal_mask = pl_module.temporal_mask
                 latents = torch.from_numpy(self.latents).to(device)
                 mask = torch.from_numpy(self.mask).to(device)
                 samples = pl_module.sampler.sample(
                     samples,
                     latents,
                     mask,
-                    cfg=12,
+                    temporal_mask=temporal_mask,
+                    cfg=6,
                     num_inference_steps=50,
                 )
                 vae = self.vae.to(samples.device)

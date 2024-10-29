@@ -23,6 +23,7 @@ class VideoDiffusionModule(L.LightningModule):
             lr_scheduler_builder,
             torch_compile=False,
             ema_cfg=None,
+            block_causal=False
         ):
         super().__init__()
         # do optim
@@ -34,6 +35,11 @@ class VideoDiffusionModule(L.LightningModule):
         self.loss = loss
         self.optimizer_cfg = optimizer_cfg
         self.lr_scheduler_builder = lr_scheduler_builder
+
+        self.temporal_mask = None
+        if block_causal:
+            self.temporal_mask = self.model.make_block_causal_temporal_mask()
+            print("using block causal temporal mask")
 
         #ema
         if ema_cfg is not None:
@@ -71,7 +77,7 @@ class VideoDiffusionModule(L.LightningModule):
         eps = torch.randn_like(vid)
         n_img = self.sampler.add_noise(vid, eps, time)
 
-        pred = self.model(n_img, time, txt, mask)
+        pred = self.model(n_img, time, txt, mask, temporal_mask=self.temporal_mask)
 
         if self.mode == "fm":
             target = (eps - vid)
@@ -108,7 +114,7 @@ class VideoDiffusionModule(L.LightningModule):
         eps = torch.randn_like(vid)
         n_img = self.sampler.add_noise(vid, eps, time)
 
-        pred = self.model(n_img, time, txt, mask)
+        pred = self.model(n_img, time, txt, mask, temporal_mask=self.temporal_mask)
 
         if self.mode == "fm":
             target = (eps - vid)

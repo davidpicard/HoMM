@@ -206,7 +206,7 @@ class TextVideoDiHBlock(nn.Module):
                                  nn.Linear(dim, 3 * dim, bias=True))
 
 
-    def forward(self, x, t, c, mask):
+    def forward(self, x, t, c, mask, temporal_mask=None):
         sx, bx, sc, bc, s1, b1, s2, b2 = self.cond_mlp(t).chunk(8, -1)
         gc, g1, g2 = self.gate_mlp(t).chunk(3, -1)
 
@@ -217,7 +217,7 @@ class TextVideoDiHBlock(nn.Module):
 
         # sa
         x_ln = modulation(self.mha_ln(x), s1, b1)
-        x = x + self.hom(x_ln) * (1 + g1)
+        x = x + self.hom(x_ln, mask=temporal_mask) * (1 + g1)
         # x = x + checkpoint(self.hom,x_ln, use_reentrant=False)*(1+g1)
 
         #ffw
@@ -305,7 +305,7 @@ class TextVideoDiH(nn.Module):
         nn.init.zeros_(self.out_mod[-1].weight)
         nn.init.zeros_(self.out_mod[-1].bias)
 
-    def forward(self, vid, time, txt, mask):
+    def forward(self, vid, time, txt, mask, temporal_mask=None):
         b, c, t, h, w = vid.shape
         # print(f"vid: {vid.shape}")
 
@@ -325,7 +325,7 @@ class TextVideoDiH(nn.Module):
 
         # forward pass
         for l in range(self.n_layers):
-            x = self.layers[l](x, t, c, mask)
+            x = self.layers[l](x, t, c, mask, temporal_mask=temporal_mask)
         s, b = self.out_mod(t).chunk(2, dim=-1)
         out = modulation(self.out_ln(x), s, b)
         # out = x
@@ -336,6 +336,15 @@ class TextVideoDiH(nn.Module):
                                h=self.n_patches_h, w=self.n_patches_w, k=self.kernel_s, l=self.kernel_s, s=self.kernel_t)
 
         return out
+
+    def make_block_causal_temporal_mask(self):
+        total_tokens = self.n_patches_h*self.n_patches_w*self.n_frames
+        frame_tokens = self.n_patches_h*self.n_patches_w
+        mask = torch.zeros(1, total_tokens, total_tokens)
+        for f in range(self.n_frames):
+            mask[:, f*frame_tokens:(f+1)*frame_tokens, 0:(f+1)*frame_tokens] = 1
+        return mask
+
 
 import math
 def sincos_embedding_3d(t, h, w, d, r=0):

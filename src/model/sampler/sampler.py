@@ -449,7 +449,7 @@ class VideoFlowMatchingSampler():
         self.timesteps = timesteps.flip(0)
         self.noise_prev = None
 
-    def _predict(self, samples, t, txt, mask, cfg=0.):
+    def _predict(self, samples, t, txt, mask, temporal_mask=None, cfg=0.):
         if cfg > 0:
             b = samples.shape[0]
             # duplicate all
@@ -458,24 +458,24 @@ class VideoFlowMatchingSampler():
             txt_input = torch.cat([txt, txt], dim=0).to(samples.device)
             mas_input = torch.cat([mask, torch.zeros_like(mask)], dim=0).to(samples.device)
             # print(f"v: {vid_input.shape} t: {tim_input.shape} c: {txt_input.shape} m: {mas_input.shape}")
-            pred = self.model(vid_input, time=tim_input.squeeze(), txt=txt_input, mask=mas_input)
+            pred = self.model(vid_input, time=tim_input.squeeze(), txt=txt_input, mask=mas_input, temporal_mask=temporal_mask)
             eps_c = pred[0:b, ...]
             eps_u = pred[b:, ...]
             pred = eps_c + cfg * (eps_c - eps_u)
         else:
-            pred = self.model(samples, time=t.squeeze(), txt=txt, mask=mask)
+            pred = self.model(samples, time=t.squeeze(), txt=txt, mask=mask, temporal_mask=temporal_mask)
 
         return pred
 
     @torch.no_grad()
-    def sample(self, samples, txt, mask, cfg: float = 0., num_inference_steps: int = 50, step_callback=None):
+    def sample(self, samples, txt, mask, temporal_mask=None, cfg: float = 0., num_inference_steps: int = 50, step_callback=None):
         b, n, c, h, w = samples.shape
         # set step values
         self.set_timesteps(num_inference_steps)
         for i, t in enumerate(self.timesteps):
             # compute previous image: x_t -> x_t-1
             t = t * torch.ones((b, 1, 1, 1, 1)).to(samples.device)
-            samples = samples - 1./self.num_inference_steps*self._predict(samples, t, txt, mask, cfg)
+            samples = samples - 1./self.num_inference_steps*self._predict(samples, t, txt, mask, temporal_mask, cfg)
             if step_callback is not None:
                 step_callback(i, samples, samples)
         return samples

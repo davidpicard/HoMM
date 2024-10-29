@@ -57,9 +57,9 @@ def high_order_aggregation_(x: torch.Tensor, k: int, mask=None):
         h = h.mean(dim=1, keepdims=True)
     else:
         if mask.dim()==2:
-            h = mask_mixer(h, mask)
+            h = mask_mixer(h, mask.to(h.device))
         elif mask.dim() ==3:
-            h = full_mask_mixer(h, mask)
+            h = full_mask_mixer(h, mask.to(h.device))
         else:
             raise Exception('unsupported dim for mask (should be 2,3 or None)')
     return h
