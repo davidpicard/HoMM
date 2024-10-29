@@ -34,16 +34,23 @@ def non_empty(f):
 gen = ImageFolder(args.path_gen, transform=transforms, is_valid_file=non_empty)
 gen = DataLoader(gen, batch_size=25, num_workers=2, shuffle=False)
 print('updating generated images')
+n = 0
 for x, y in tqdm(gen):
     x = x.to(device)
     metrics.update(x, labels=y, image_type="conditional")
+    n += 25
+N = n
 
 rea = ImageFolder(args.path_real, transform=transforms)
-rea = DataLoader(rea, batch_size=25, num_workers=2, shuffle=False)
+rea = DataLoader(rea, batch_size=25, num_workers=2, shuffle=True)
 print('updating real images')
+n = 0
 for x, y in tqdm(rea):
     x = x.to(device)
     metrics.update(x, labels=y, image_type="real")
+    n += 25
+    if n >= N:
+        break
 
 print('computing metrics')
 print(metrics.compute())
