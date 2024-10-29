@@ -12,19 +12,22 @@ from tqdm import tqdm
 
 device = "cuda"
 
-transforms = Compose([
-    Resize(256),
-    CenterCrop(256),
-    ToTensor(),
-    Lambda(lambda x: (255.*x).type(torch.uint8))
-])
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--path_real", help="path to checkpoint", required=True)
-parser.add_argument("--path_gen", help="path to checkpoint", required=True)
+parser.add_argument("--path_real", help="path to real images", required=True)
+parser.add_argument("--path_gen", help="path to generated images", required=True)
+parser.add_argument("--size", default=256)
 
 args = parser.parse_args()
+
+
+transforms = Compose([
+    Resize(args.size),
+    CenterCrop(args.size),
+    ToTensor(),
+    Lambda(lambda x: (255.*x).type(torch.uint8))
+])
 
 metrics = MultiInceptionMetrics(compute_conditional_metrics=True, compute_conditional_metrics_per_class=False)
 metrics = metrics.to(device)
@@ -49,7 +52,7 @@ for x, y in tqdm(rea):
     x = x.to(device)
     metrics.update(x, labels=y, image_type="real")
     n += 25
-    if n >= N:
+    if n > 2*N:
         break
 
 print('computing metrics')
