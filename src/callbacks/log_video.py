@@ -60,7 +60,7 @@ class LogGenVideo(Callback):
                     samples,
                     latents,
                     mask,
-                    cfg=4,
+                    cfg=12,
                     num_inference_steps=50,
                 )
                 vae = self.vae.to(samples.device)
