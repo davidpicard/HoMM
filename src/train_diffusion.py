@@ -57,7 +57,7 @@ def train(cfg):
         monitor=["train/loss"],
     )
 
-    log_gen_img_callback = LogGenImage()
+    log_gen_img_callback = hydra.utils.instantiate(cfg.imagelogger)
 
     callbacks = [
         checkpoint_callback,
