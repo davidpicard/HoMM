@@ -323,17 +323,27 @@ class DPMScheduler():
         return samples
 
 
+import math
 class FlowMatchingSampler():
     def __init__(self,
-                 model):
+                 model,
+                 size=256):
         self.model = model
         self.train_timesteps = model.n_timesteps
         self.timesteps = None
+        self.size = size
+
+    def rescale_t(self, t):
+        t = t/self.train_timesteps
+        ts = t * math.sqrt(self.size / 256) / (1 + (math.sqrt(self.size / 256) - 1) * t)
+        return ts * self.train_timesteps
 
     def add_noise(self, x, noise, t):
         t = torch.clamp(t, 0, self.train_timesteps)
-        sigma = (t / self.train_timesteps).view(x.shape[0], 1, 1, 1)
-        return (1 - sigma) * x + sigma * noise
+        ts = self.rescale_t(t)/ self.train_timesteps
+        sigma = ts.view(x.shape[0], 1, 1, 1)
+        alpha = 1 - sigma
+        return alpha * x + sigma * noise
 
     def set_timesteps(self, num_inference_steps):
         timesteps = torch.linspace(1.0, self.train_timesteps - 1, num_inference_steps + 1)
@@ -364,10 +374,13 @@ class FlowMatchingSampler():
         b, c, h, w = samples.shape
         # set step values
         self.set_timesteps(num_inference_steps)
-        for i, t in enumerate(self.timesteps):
+        for i, t in enumerate(zip(self.timesteps[0:-2], self.timesteps[1:])):
+            tc, tn = t
+            tc = self.rescale_t(tc)
+            tn = self.rescale_t(tn)
             # compute previous image: x_t -> x_t-1
-            t = t * torch.ones((b, 1, 1, 1)).to(samples.device)
-            samples = samples - 1./self.num_inference_steps*self._predict(samples, t, class_labels, cfg)
+            dt = (tc-tn) / self.train_timesteps * torch.ones((b, 1, 1, 1)).to(samples.device)
+            samples = samples - dt*self._predict(samples, t, class_labels, cfg)
             if step_callback is not None:
                 step_callback(i, samples, samples)
         return samples
