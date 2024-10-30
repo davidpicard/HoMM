@@ -82,7 +82,7 @@ class DiffusionModule(L.LightningModule):
         # noise scheduler
         self.n_timesteps = model.n_timesteps
         print(f"prediction mode: {self.mode}")
-        self.sampler = FlowMatchingSampler(model=self.ema.ema_model) if self.mode == "fm" else DPMScheduler(model=self.ema.ema_model)
+        self.sampler = FlowMatchingSampler(model=self.ema.ema_model, size=model.im_size) if self.mode == "fm" else DPMScheduler(model=self.ema.ema_model)
 
         # Set to False because we don't load the vae
         self.strict_loading = False

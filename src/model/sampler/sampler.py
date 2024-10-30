@@ -327,15 +327,16 @@ import math
 class FlowMatchingSampler():
     def __init__(self,
                  model,
-                 size=256):
+                 size=32):
         self.model = model
         self.train_timesteps = model.n_timesteps
         self.timesteps = None
         self.size = size
+        print(f"Flow matching sampler with size {self.size}")
 
     def rescale_t(self, t):
         t = t/self.train_timesteps
-        ts = t * math.sqrt(self.size / 256) / (1 + (math.sqrt(self.size / 256) - 1) * t)
+        ts = t * math.sqrt(self.size / 32) / (1 + (math.sqrt(self.size / 32) - 1) * t)
         return ts * self.train_timesteps
 
     def add_noise(self, x, noise, t):
