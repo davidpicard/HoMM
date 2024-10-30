@@ -377,11 +377,11 @@ class FlowMatchingSampler():
         self.set_timesteps(num_inference_steps)
         for i, t in enumerate(zip(self.timesteps[0:-2], self.timesteps[1:])):
             tc, tn = t
-            tc = self.rescale_t(tc)
-            tn = self.rescale_t(tn)
+            tc = self.rescale_t(tc) * torch.ones((b, 1, 1, 1)).to(samples.device)
+            tn = self.rescale_t(tn) * torch.ones((b, 1, 1, 1)).to(samples.device)
             # compute previous image: x_t -> x_t-1
-            dt = (tc-tn) / self.train_timesteps * torch.ones((b, 1, 1, 1)).to(samples.device)
-            samples = samples - dt*self._predict(samples, t, class_labels, cfg)
+            dt = (tc-tn) / self.train_timesteps
+            samples = samples - dt*self._predict(samples, tc, class_labels, cfg)
             if step_callback is not None:
                 step_callback(i, samples, samples)
         return samples
