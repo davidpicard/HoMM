@@ -6,6 +6,7 @@ from diffusers import AutoencoderKL
 from torchvision import transforms
 from argparse import ArgumentParser
 from torchvision.datasets import ImageNet
+from torchvision.transforms import InterpolationMode
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 import io
@@ -26,7 +27,7 @@ class FilteredImageNet(ImageNet):
             path, _ = self.samples[i]
             with Image.open(path) as img:
                 width, height = img.size
-                if max(width, height) >= self.min_resolution:
+                if min(width, height) >= self.min_resolution//2:
                     return i
             return None
 
@@ -79,7 +80,7 @@ print(f"Saving data in {args.target_precision}")
 
 ## imagenet loader
 tr = [
-    transforms.Resize(int(args.size)),
+    transforms.Resize(int(args.size), interpolation=InterpolationMode.BICUBIC),
     transforms.CenterCrop(args.size),
     transforms.ToTensor(),
     transforms.Normalize(mean=0.5, std=0.5),
