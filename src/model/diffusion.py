@@ -273,6 +273,7 @@ class DiffusionModule(L.LightningModule):
         else:
             optimizer = self.optimizer_cfg.optim(self.model.parameters())
         scheduler = self.lr_scheduler_builder(optimizer)
+        print(f"optimizer base learning rate: {[g['lr'] for g in optimizer.param_groups]}")
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 
     def lr_scheduler_step(self, scheduler, metric):
