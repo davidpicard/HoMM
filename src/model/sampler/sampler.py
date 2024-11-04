@@ -392,9 +392,16 @@ class HeunVelocitySampler():
         self.model = model
         self.train_timesteps = model.n_timesteps
         self.timesteps = None
+        self.size = model.im_size
+
+    def rescale_t(self, t):
+        t = t/self.train_timesteps
+        ts = t * math.sqrt(self.size / 32) / (1 + (math.sqrt(self.size / 32) - 1) * t)
+        return ts * self.train_timesteps
 
     def add_noise(self, x, noise, t):
         t = torch.clamp(t, 0, self.train_timesteps)
+        t = self.rescale_t(t)
         sigma = (t / self.train_timesteps).view(x.shape[0], 1, 1, 1)
         return (1 - sigma) * x + sigma * noise
 
@@ -428,14 +435,17 @@ class HeunVelocitySampler():
         # set step values
         self.set_timesteps(num_inference_steps)
         for i, (t, tp1) in enumerate(zip(self.timesteps[0:-1], self.timesteps[1:])):
+            t = self.rescale_t(t)
+            tp1 = self.rescale_t(tp1)
             t = t * torch.ones((b, 1, 1, 1)).to(samples.device)
             tp1 = tp1 * torch.ones((b, 1, 1, 1)).to(samples.device)
+            dt = (t - tp1)/self.train_timesteps
 
             di = self._predict(samples, t, class_labels, cfg)
-            xi = samples - 1./self.num_inference_steps * di
+            xi = samples - dt * di
 
             dip1 = self._predict(xi, tp1, class_labels, cfg)
-            samples = samples - 1./self.num_inference_steps*(di + dip1)/2
+            samples = samples - dt*(di + dip1)/2
 
             if step_callback is not None:
                 step_callback(i, samples, samples)
