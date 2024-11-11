@@ -316,7 +316,8 @@ class ClassConditionalDiH(nn.Module):
         # patchify
         x = self.in_conv(img)
         b, c, h, w = x.shape
-        pos_emb = sincos_embedding_2d(self.n_patches, self.n_patches, self.dim).to(x.device)
+        # pos_emb = sincos_embedding_2d(self.n_patches, self.n_patches, self.dim).to(x.device)
+        pos_emb = sincos_embedding_2d(h, w, self.dim).to(x.device)
         pos_emb = einops.rearrange(pos_emb, "b h w d -> b (h w) d")
 
         x = einops.rearrange(x, 'b d h w -> b (h w) d')
@@ -340,8 +341,10 @@ class ClassConditionalDiH(nn.Module):
         out = self.out_proj(out)
 
         # depatchify
+        # out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
+        #                        h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
         out = einops.rearrange(out, 'b (h w) (k s c) -> b c (h k) (w s)',
-                               h=self.n_patches, k=self.kernel_size, s=self.kernel_size)
+                               h=h, k=self.kernel_size, s=self.kernel_size)
 
         return out
 

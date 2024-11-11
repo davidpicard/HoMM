@@ -452,6 +452,97 @@ class HeunVelocitySampler():
         return samples
 
 
+class UpscaleHeunVelocitySampler():
+    def __init__(self,
+                 model_u,
+                 cutoff = 0.7,
+                ):
+        self.model_u = model_u
+        self.train_timesteps = model_u.n_timesteps
+        self.timesteps = None
+        self.size_u = model_u.im_size
+        self.cutoff = cutoff
+
+    def rescale_t(self, t, size=None):
+        if size is None:
+            size = self.model_u.im_size
+        t = t/self.train_timesteps
+        t = t * math.sqrt(size / 32) / (1 + (math.sqrt(size / 32) - 1) * t)
+        return t * self.train_timesteps
+
+    def add_noise(self, x, noise, t):
+        t = torch.clamp(t, 0, self.train_timesteps)
+        t = self.rescale_t(t)
+        sigma = (t / self.train_timesteps).view(x.shape[0], 1, 1, 1)
+        return (1 - sigma) * x + sigma * noise
+
+    def set_timesteps(self, num_inference_steps):
+        timesteps = torch.linspace(1.0, self.train_timesteps - 1, num_inference_steps + 1)
+        self.num_inference_steps = num_inference_steps
+        self.timesteps = timesteps.flip(0)
+        self.noise_prev = None
+
+    def _up_pred(self, samples, t, ctx, w_u=0, m=2):
+        b, d, h, w = samples.shape
+        size_u = h
+        size_d = h/m
+        if t.max() < self.cutoff*self.train_timesteps or w_u == 0:
+            # print(f"no upscale {t.max()}")
+            t_u = self.rescale_t(t, size=size_u)
+            return self.model_u(samples, time=t_u.squeeze(), cls=ctx)
+        t_d = self.rescale_t(t, size=size_d)
+        t_u = self.rescale_t(t, size=size_u)
+        samples_d = torch.nn.functional.interpolate(samples, scale_factor=1/m, mode='bilinear')
+        # print(f"samples_d: {samples_d.shape}")
+        pred_d = self.model_u(samples_d, time=t_d.squeeze(), cls=ctx)
+        # print(f"pred_d: {pred_d.shape}")
+        pred_u = self.model_u(samples, time=t_u.squeeze(), cls=ctx)
+        # print(f"pred_u: {pred_u.shape}")
+        d_pred_u = torch.nn.functional.interpolate(pred_u, scale_factor=1/m, mode='bilinear')
+        # print(f"d_pred_u: {d_pred_u.shape}")
+        pred = pred_u + w_u*torch.nn.functional.interpolate(1/m*pred_d - d_pred_u, scale_factor=m, mode='bilinear')
+        return pred
+
+    def _predict(self, samples, t, ctx, cfg=0., w_u=0., m=2):
+        b, d, h, w = samples.shape
+        size_u = h
+        size_d = h/m
+        if cfg > 0:
+            # duplicate all
+            x_input = torch.cat([samples, samples], dim=0)
+            t_input = torch.cat([t, t], dim=0).to(samples.device)
+            c_input = torch.cat([ctx, ctx], dim=0).to(samples.device)
+            c_input[b:] = 1000
+            pred = self._up_pred(x_input, t_input, c_input, w_u, m)
+            eps_c = pred[0:b, ...]
+            eps_u = pred[b:, ...]
+            pred = eps_c + cfg * (eps_c - eps_u)
+        else:
+            pred = self._up_pred(samples, t, ctx, w_u, m)
+
+        return pred
+
+    @torch.no_grad()
+    def sample(self, samples, class_labels, w_u=0, m=2, cfg: float = 0., num_inference_steps: int = 50, step_callback=None, cfg_scheduler = None):
+        class_labels = class_labels.to(samples.device)
+        b, c, h, w = samples.shape
+        # set step values
+        self.set_timesteps(num_inference_steps)
+        for i, (t, tp1) in enumerate(zip(self.timesteps[0:-1], self.timesteps[1:])):
+            t = t * torch.ones((b, 1, 1, 1)).to(samples.device)
+            tp1 = tp1 * torch.ones((b, 1, 1, 1)).to(samples.device)
+            dt = (t - tp1)/self.train_timesteps
+
+            di = self._predict(samples, t, class_labels, cfg, w_u, m)
+            xi = samples - dt * di
+
+            dip1 = self._predict(xi, tp1, class_labels, cfg, w_u, m)
+            samples = samples - dt*(di + dip1)/2
+
+            if step_callback is not None:
+                step_callback(i, samples, samples)
+        return samples
+
 ##  cfg sched
 
 def linear(t):
