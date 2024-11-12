@@ -345,6 +345,22 @@ class TextVideoDiH(nn.Module):
             mask[:, f*frame_tokens:(f+1)*frame_tokens, 0:(f+1)*frame_tokens] = 1
         return mask
 
+def TVDiH_S2(**kwargs):
+    return TextVideoDiH(input_dim=16,
+                        text_dim=1024,
+                        n_timesteps=1000,
+                        kernel_s=2,
+                        kernel_t=2,
+                        dim=384,
+                        n_layers=12,
+                        order=2,
+                        order_expand=2,
+                        ffw_expand=3,
+                        **kwargs)
+
+TVDiH_models = {
+    'TVDiH_S2': TVDiH_S2,
+}
 
 import math
 def sincos_embedding_3d(t, h, w, d, r=0):
