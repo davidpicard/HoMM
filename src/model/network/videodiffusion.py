@@ -358,8 +358,22 @@ def TVDiH_S2(**kwargs):
                         ffw_expand=3,
                         **kwargs)
 
+def TVDiH_XL2(**kwargs):
+    return TextVideoDiH(input_dim=16,
+                        text_dim=1024,
+                        n_timesteps=1000,
+                        kernel_s=2,
+                        kernel_t=2,
+                        dim=1152,
+                        n_layers=20,
+                        order=2,
+                        order_expand=2,
+                        ffw_expand=2,
+                        **kwargs)
+
 TVDiH_models = {
     'TVDiH_S2': TVDiH_S2,
+    'TVDiH_XL2': TVDiH_XL2,
 }
 
 import math
