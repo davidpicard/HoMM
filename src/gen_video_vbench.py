@@ -39,6 +39,7 @@ plmodule.load_state_dict(ckpt['state_dict'], strict=False)
 ckpt = None
 model = plmodule.ema.ema_model.to(device)
 model.eval()
+model.compile()
 temporal_mask = plmodule.temporal_mask.to(device)
 vid_size = args.size.split("x")
 vid_size = (int(vid_size[0]), int(vid_size[1]))
