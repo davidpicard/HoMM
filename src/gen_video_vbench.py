@@ -22,6 +22,7 @@ parser.add_argument("--output", type=str, required=True)
 parser.add_argument("--block-causal", type=bool, default=False)
 parser.add_argument("--n-timesteps", type=int, default=125)
 parser.add_argument("--cfg", type=float, default=2)
+parser.add_argument("--index", type=bool, required=True)
 args = parser.parse_args()
 
 
@@ -60,58 +61,59 @@ txt = [
 ]
 
 dimension_list = [
-    # 'appearance_style',
+    'appearance_style',
     'color',
-#    'human_action',
-#    'multiple_objects',
-#     'object_class',
-    # 'scene',
-#    'spatial_relationship',
-#     'subject_consistency',
-    # 'temporal_flickering',
-    # 'temporal_style',
-    # 'overall_consistency'
+   'human_action',
+   'multiple_objects',
+    'object_class',
+    'scene',
+   'spatial_relationship',
+    'subject_consistency',
+    'temporal_flickering',
+    'temporal_style',
+    'overall_consistency'
 ]
 
 os.makedirs("{}".format(args.output), exist_ok=True)
-for dimension in dimension_list:
-        # read prompt list
-    with open(f'{args.vbench_path}/prompts_per_dimension/{dimension}.txt', 'r') as f:
-        prompt_list = f.readlines()
-    prompt_list = [prompt.strip() for prompt in prompt_list]
+# for dimension in dimension_list:
+dimension = dimension_list[args.index]
+    # read prompt list
+with open(f'{args.vbench_path}/prompts_per_dimension/{dimension}.txt', 'r') as f:
+    prompt_list = f.readlines()
+prompt_list = [prompt.strip() for prompt in prompt_list]
 
-    for prompt in prompt_list:
-        with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=True):
-            # perform sampling
-            print(f"processing text: {prompt}")
-            tokens = tokenizer.batch_encode_plus([prompt], max_length=64,
-                                                 padding="max_length", truncation=True, return_tensors="pt",
-                                                 return_attention_mask=True)
-            input_ids = tokens.input_ids.to(device)
-            mask = (tokens.attention_mask > 0.).to(device)
-            latents = text_encoder(input_ids=input_ids, attention_mask=mask).last_hidden_state.detach()
+for prompt in prompt_list:
+    with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=True):
+        # perform sampling
+        print(f"processing text: {prompt}")
+        tokens = tokenizer.batch_encode_plus([prompt], max_length=64,
+                                             padding="max_length", truncation=True, return_tensors="pt",
+                                             return_attention_mask=True)
+        input_ids = tokens.input_ids.to(device)
+        mask = (tokens.attention_mask > 0.).to(device)
+        latents = text_encoder(input_ids=input_ids, attention_mask=mask).last_hidden_state.detach()
 
-            print(f"generating video sample")
-            samples = torch.randn(size=(5, model.input_dim, args.length, vid_size[0], vid_size[1]),
-                                  generator=gen,
-                                  device=device)
-            ones = torch.ones((5, 1, 1)).to(device)
-            # print(f"temporal mask: {temporal_mask.shape}")
+        print(f"generating video sample")
+        samples = torch.randn(size=(5, model.input_dim, args.length, vid_size[0], vid_size[1]),
+                              generator=gen,
+                              device=device)
+        ones = torch.ones((5, 1, 1)).to(device)
+        # print(f"temporal mask: {temporal_mask.shape}")
+        # print(f"samples shape: {samples.shape}")
+        with tqdm(total=args.n_timesteps) as pbar:
+            samples = sampler.sample(
+                samples,
+                latents*ones,
+                mask*ones,
+                temporal_mask=temporal_mask,
+                cfg=args.cfg,
+                num_inference_steps=args.n_timesteps,
+                step_callback=lambda x, y, z: pbar.update(1),
+            )
+
+        # sample 5 videos for each prompt
+        for index in range(5):
             # print(f"samples shape: {samples.shape}")
-            with tqdm(total=args.n_timesteps) as pbar:
-                samples = sampler.sample(
-                    samples,
-                    latents*ones,
-                    mask*ones,
-                    temporal_mask=temporal_mask,
-                    cfg=args.cfg,
-                    num_inference_steps=args.n_timesteps,
-                    step_callback=lambda x, y, z: pbar.update(1),
-                )
-
-            # sample 5 videos for each prompt
-            for index in range(5):
-                # print(f"samples shape: {samples.shape}")
-                v = vae_decode_video(samples[index].squeeze().detach(), vae, batch_size=40).cpu()
-                print("writing video")
-                write_video(v, f"{args.output}/{prompt}-{index}.mp4", target_fps=16)
+            v = vae_decode_video(samples[index].squeeze().detach(), vae, batch_size=40).cpu()
+            print("writing video")
+            write_video(v, f"{args.output}/{prompt}-{index}.mp4", target_fps=16)
