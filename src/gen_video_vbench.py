@@ -22,7 +22,7 @@ parser.add_argument("--output", type=str, required=True)
 parser.add_argument("--block-causal", type=bool, default=False)
 parser.add_argument("--n-timesteps", type=int, default=125)
 parser.add_argument("--cfg", type=float, default=2)
-parser.add_argument("--index", type=bool, required=True)
+parser.add_argument("--index", type=int, required=True)
 args = parser.parse_args()
 
 
