@@ -34,13 +34,14 @@ class ema_cfg:
     update_after_step = 10000
     update_every = 10
 ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'))
-plmodule = VideoDiffusionModule(model, None, None, None, None, None, ema_cfg=ema_cfg(), block_causal=args.block_causal)
+plmodule = VideoDiffusionModule(model, None, None, None, None, None, ema_cfg=ema_cfg(), block_causal=True)
 plmodule.load_state_dict(ckpt['state_dict'], strict=False)
 ckpt = None
 model = plmodule.ema.ema_model.to(device)
 model.eval()
 model.compile()
-temporal_mask = plmodule.temporal_mask.to(device)
+temporal_mask = plmodule.temporal_mask.to(device) if args.block_causal else None
+print(f"block causal model: {temporal_mask}")
 vid_size = args.size.split("x")
 vid_size = (int(vid_size[0]), int(vid_size[1]))
 plmodule = None
