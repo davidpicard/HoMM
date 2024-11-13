@@ -78,7 +78,8 @@ dimension_list = [
 os.makedirs("{}".format(args.output), exist_ok=True)
 # for dimension in dimension_list:
 dimension = dimension_list[args.index]
-    # read prompt list
+print(f"doing dimension {dimension}")
+# read prompt list
 with open(f'{args.vbench_path}/prompts_per_dimension/{dimension}.txt', 'r') as f:
     prompt_list = f.readlines()
 prompt_list = [prompt.strip() for prompt in prompt_list]
