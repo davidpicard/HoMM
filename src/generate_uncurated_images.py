@@ -82,7 +82,8 @@ else:
     vae = VAE().to(device)
     vae.eval()
 
-for i in tqdm([18, 19, 88, 107, 113, 207, 270, 279, 291, 360, 387, 417, 703, 928, 966, 972, 978, 980]):
+for i in tqdm([281, 282, 283, 284, 285]):
+# for i in tqdm([18, 19, 88, 107, 113, 207, 270, 279, 291, 360, 387, 417, 703, 928, 966, 972, 978, 980]):
 # for i in tqdm([113, 207, 270, 279, 291, 360, 387, 417, 703, 928, 966, 972, 978, 980]):
     generator = torch.manual_seed(3407)
     label = torch.zeros((args.n_images_per_class,)).long() + i
