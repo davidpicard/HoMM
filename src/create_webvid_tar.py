@@ -11,7 +11,7 @@ from tqdm import tqdm
 import io
 import csv
 
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 from utils.video import read_video, vae_encode_video, VideoVAE
 
@@ -80,7 +80,7 @@ class TarWriter():
 
 from torch.utils.data.dataset import Dataset
 class WebvidDataset(Dataset):
-    def __init__(self, path, size, nb_frames, start, end):
+    def __init__(self, path, size, fps, nb_frames, start, end):
         dataset_path = os.path.split(args.path)[0]
         print(f"dataset path: {dataset_path}")
         if end < 0:
@@ -103,6 +103,7 @@ class WebvidDataset(Dataset):
                     break
         self.total_number = len(self.files)
         self.size = size
+        self.fps = fps
         self.nb_frames = nb_frames
         print(f"Loading {self.total_number} files at {dataset_path} from {start} to {end}")
 
@@ -114,13 +115,14 @@ class WebvidDataset(Dataset):
         video_path = self.files[idx]
         txt = self.txt[idx]
         try:
-            video = read_video(video_path, size=self.size, start_frame=0, end_frame=self.nb_frames)
+            video, fps = read_video(video_path, size=self.size, target_fps=self.fps, start_frame=0, end_frame=self.nb_frames)
             # print(f"video shape: {video.shape}")
             if video is None:
                 raise Exception
             if video.shape[1] < self.nb_frames:
                 m = self.nb_frames - video.shape[1]
                 video = F.pad(video, (0,0,0,0,0,m), "constant", 0)
+            txt = f"{txt}, {fps}fps"
         except:
             print(f"buggy video: {video_path}")
             video = torch.zeros((3, self.nb_frames, self.size[0], self.size[1]))
@@ -136,9 +138,10 @@ parser.add_argument("--output", type=str, required=True)
 parser.add_argument("--device", type=str, default="cuda")
 parser.add_argument("--precision", type=str, default="bf16")
 parser.add_argument("--batch-size", type=int, default=8)
-parser.add_argument("--size", type=str, default="80x128")
-parser.add_argument("--nb-frames", type=int, default=80)
-parser.add_argument("--temp-chunk-size", type=int, default=8)
+parser.add_argument("--size", type=str, default="160x256")
+parser.add_argument("--fps", type=int, default=16)
+parser.add_argument("--nb-frames", type=int, default=121)
+parser.add_argument("--temp-chunk-size", type=int, default=80)
 parser.add_argument("--chunk-size", type=int, default=100)
 parser.add_argument("--split", type=str, default="train")
 parser.add_argument("--num-workers", type=int, default=2)
@@ -160,12 +163,16 @@ size = args.size.split("x")
 size = (int(size[0]), int(size[1]))
 print(f"video size: {size}")
 
+fps = args.fps
+print(f"fps: {fps}")
+
 vae = VideoVAE().to(args.device)
 vae = torch.compile(vae)
-text_encoder = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large", torch_dtype=torch.bfloat16).encoder.to(args.device)
+
+quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+tokenizer = AutoTokenizer.from_pretrained("google/gemma-2b")
+text_encoder = AutoModelForCausalLM.from_pretrained("google/gemma-2b", quantization_config=quantization_config)
 text_encoder.eval()
-text_encoder = torch.compile(text_encoder)
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 
 dataset_path = os.path.split(args.path)[0]
 print(f"dataset path: {dataset_path}")
@@ -174,7 +181,7 @@ out.resume(args.start)
 
 count = 0
 
-data = WebvidDataset(args.path, size=size, nb_frames=args.nb_frames, start=args.start, end=args.end)
+data = WebvidDataset(args.path, size=size, fps=fps, nb_frames=args.nb_frames, start=args.start, end=args.end)
 data = DataLoader(data, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False)
 
 for batch in tqdm(data):
@@ -191,7 +198,8 @@ for batch in tqdm(data):
                                     return_attention_mask=True)
         input_ids = tokens.input_ids.to(args.device)
         attention_mask = (tokens.attention_mask > 0.).to(args.device)
-        text_latents = text_encoder(input_ids=input_ids, attention_mask=attention_mask).last_hidden_state.detach()
+        text_latents = text_encoder(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True).hidden_states[-1].detach()
+        # print(f"tl: {text_latents.shape}")
 
         for i in range(video_latents.shape[0]):
             name = f"{names[i].split(".")[0]}.npz"

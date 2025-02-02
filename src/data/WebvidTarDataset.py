@@ -9,6 +9,8 @@ import threading
 
 from utils.video import VideoVAE, vae_decode_video
 
+from src.utils.video import write_video
+
 
 class LRUCache:
     def __init__(self, capacity: int):
@@ -88,13 +90,16 @@ class WebvidTarDataset(Dataset):
         video_latents = torch.from_numpy(data['arr_0']).float()
         text_latents = torch.from_numpy(data['arr_1']).float()
         mask_latents = torch.from_numpy(data['arr_2']).float()
-        return video_latents, text_latents, mask_latents
+        txt = data['arr_3'].tostring()
+        # print(f"wvtds, txt: {type(txt)}")
+        return video_latents, text_latents, mask_latents, txt
 
 if __name__ == "__main__":
     import argparse
     from torch.utils.data import DataLoader
     import torch
     import matplotlib.pyplot as plt
+    import cv2
     import einops
     from tqdm import tqdm
     vae = VideoVAE()
@@ -152,7 +157,11 @@ if __name__ == "__main__":
             decoded = decoded.permute(1,0,2,3).detach().cpu()
             for img in decoded:
                 plt.clf()
-                plt.imshow(einops.rearrange(img.cpu(), "c h w -> h w c"))
+                plt.imshow(einops.rearrange(img, "c h w -> h w c"))
                 plt.title(f"text latent shape: {text.shape} mask: {mask.sum()}")
                 plt.show()
-                plt.pause(0.0625)
+                plt.pause(0.1)
+
+            decoded = decoded.permute(1,0,2,3)
+            write_video(decoded, "output.mp4", 16)
+            break

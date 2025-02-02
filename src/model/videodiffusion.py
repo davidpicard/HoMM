@@ -60,11 +60,11 @@ class VideoDiffusionModule(L.LightningModule):
 
 
     def training_step(self, batch, batch_idx):
-        vid, txt, mask = batch
+        vid_latents, txt_latents, mask, txt = batch
         b, n = mask.shape
 
         # drop labels
-        drop = torch.rand(b, device=txt.device) < 0.1
+        drop = torch.rand(b, device=txt_latents.device) < 0.1
         drop = drop.unsqueeze(-1)
         zero = torch.zeros_like(mask)
         mask = torch.where(drop, zero, mask)
@@ -73,14 +73,14 @@ class VideoDiffusionModule(L.LightningModule):
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
         # time = torch.linspace(0, (b-1)/b, b) + torch.rand(b)/b
         # time = (time*self.n_timesteps).to(img.device)
-        time = torch.randint(0, self.n_timesteps, (b,)).to(vid.device)
-        eps = torch.randn_like(vid)
-        n_img = self.sampler.add_noise(vid, eps, time)
+        time = torch.randint(0, self.n_timesteps, (b,)).to(vid_latents.device)
+        eps = torch.randn_like(vid_latents)
+        n_img = self.sampler.add_noise(vid_latents, eps, time)
 
-        pred = self.model(n_img, time, txt, mask, temporal_mask=self.temporal_mask)
+        pred = self.model(n_img, time, txt_latents, mask, temporal_mask=self.temporal_mask)
 
         if self.mode == "fm":
-            target = (eps - vid)
+            target = (eps - vid_latents)
             loss = {"loss": ((target - pred)**2).mean()}
         elif self.mode == "eps":
             loss = {"loss": ((pred - eps)**2).mean()}
@@ -103,21 +103,20 @@ class VideoDiffusionModule(L.LightningModule):
 
     def validation_step(self, batch, batch_idx):
 
-        vid, txt, mask = batch
+        vid_latents, txt_latents, mask, txt = batch
         b, n = mask.shape
 
-        # print(f"vid: {vid.shape} txt: {txt.shape} mask: {mask.shape}")
         #sample time, noise, make noisy
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
-        time = torch.linspace(0, self.n_timesteps, b).to(vid.device)
+        time = torch.linspace(0, self.n_timesteps, b).to(vid_latents.device)
         # time = self.scheduler(torch.rand(b)/b + torch.arange(0, b)/b).to(img.device)
-        eps = torch.randn_like(vid)
-        n_img = self.sampler.add_noise(vid, eps, time)
+        eps = torch.randn_like(vid_latents)
+        n_img = self.sampler.add_noise(vid_latents, eps, time)
 
-        pred = self.model(n_img, time, txt, mask, temporal_mask=self.temporal_mask)
+        pred = self.model(n_img, time, txt_latents, mask, temporal_mask=self.temporal_mask)
 
         if self.mode == "fm":
-            target = (eps - vid)
+            target = (eps - vid_latents)
             loss = {"loss": ((target - pred)**2).mean()}
         elif self.mode == "eps":
             loss = {"loss": ((pred - eps)**2).mean()}

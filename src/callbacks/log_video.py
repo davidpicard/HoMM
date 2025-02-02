@@ -37,22 +37,22 @@ class LogGenVideo(Callback):
         # if pl_module.global_rank == 0:
             if pl_module.global_step % self.log_every_n_steps == 0 and pl_module.global_step > self.last_log_step and self.ready:
                 self.last_log_step = pl_module.global_step
-                vid, txt, mask = batch
+                vid_latents, txt_latents, mask, txt = batch
                 if self.latents is None:
                     print("no txt provided, taking from train")
-                    self.latents = txt[0:2,...]
-                    self.mask = mask[0:2, ...]
-                    self.txt = ["_", "_"]
+                    self.latents = txt_latents[0:2,...].cpu().numpy()
+                    self.mask = mask[0:2, ...].cpu().numpy()
+                    self.txt = txt[0:2]
                 print("Logging video")
                 logger = trainer.logger
                 # sample images
                 device = pl_module.device
                 gen = torch.Generator(device=device)
                 gen.manual_seed(3407)
-                samples = torch.randn(size=(2, vid.shape[1], vid.shape[2], vid.shape[3], vid.shape[4]),
+                samples = torch.randn(size=(2, vid_latents.shape[1], vid_latents.shape[2], vid_latents.shape[3], vid_latents.shape[4]),
                                       generator=gen,
-                                      dtype=vid.dtype,
-                                      layout=vid.layout,
+                                      dtype=vid_latents.dtype,
+                                      layout=vid_latents.layout,
                                       device=device)
                 temporal_mask = pl_module.temporal_mask
                 latents = torch.from_numpy(self.latents).to(device)
