@@ -1,4 +1,5 @@
 import torch
+from lightning.pytorch.utilities import CombinedLoader
 from torch.utils.data import Dataset
 import json
 import tarfile
@@ -52,16 +53,26 @@ class WebvidTarDataset(Dataset):
         self.split = "val_" if split == "val" else ""
         self.filenames = []
         self.counts = []
-        self.q = []
-        with open(f"{self.dir}/{self.split}index.json", "r") as f:
-            j = json.load(f)
-            for d in j:
-                self.filenames.append(d['filename'])
-                self.counts.append(d['count'])
+        # self.q = []
+        if ":" in self.dir:
+            dir = self.dir.split(":")
+        else:
+            dir = [self.dir]
+        for p in dir:
+            print(f"opening index {p}")
+            with open(f"{p}/{self.split}index.json", "r") as f:
+                j = json.load(f)
+                for d in j:
+                    self.filenames.append(d['filename'])
+                    self.counts.append(d['count'])
         self.total_count = sum(self.counts)
         assert self.total_count > 0
         self.transform = None
         self.generator = torch.Generator().manual_seed(seed)
+        if self.split != "val_":
+            perm = torch.randperm(len(self.filenames), generator=self.generator)
+            self.filenames = [self.filenames[i] for i in perm]
+            self.counts = [self.counts[i] for i in perm]
 
         self.cache = LRUCache(capacity=256)
         self.lock = threading.Lock()
@@ -90,7 +101,7 @@ class WebvidTarDataset(Dataset):
         video_latents = torch.from_numpy(data['arr_0']).float()
         text_latents = torch.from_numpy(data['arr_1']).float()
         mask_latents = torch.from_numpy(data['arr_2']).float()
-        txt = data['arr_3'].tostring()
+        txt = data['arr_3'].tobytes()
         # print(f"wvtds, txt: {type(txt)}")
         return video_latents, text_latents, mask_latents, txt
 
@@ -148,9 +159,12 @@ if __name__ == "__main__":
         plt.ion()
 
         for samples in train:
-            frames, text, mask = samples
+            frames, text, mask, ori_txt = samples
             frames = frames.to("cuda").squeeze()
             print(f"sample shape: {frames.shape}")
+            ori_txt = ori_txt[0].decode('utf-8')
+            ori_txt = ori_txt.replace('\x00', '')
+            print(f"ori_txt: {ori_txt}")
 
             with torch.autocast(device_type="cuda", dtype=torch.float, enabled=True):
                 decoded = vae_decode_video(frames, vae)
@@ -158,7 +172,7 @@ if __name__ == "__main__":
             for img in decoded:
                 plt.clf()
                 plt.imshow(einops.rearrange(img, "c h w -> h w c"))
-                plt.title(f"text latent shape: {text.shape} mask: {mask.sum()}")
+                plt.title(f"tl: {text.shape} m: {mask.sum()} txt: {ori_txt}")
                 plt.show()
                 plt.pause(0.1)
 

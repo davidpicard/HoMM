@@ -1,4 +1,5 @@
 import lightning.pytorch as L
+from lightning.pytorch.utilities import CombinedLoader
 from torch.utils.data import DataLoader
 import math
 import torch
