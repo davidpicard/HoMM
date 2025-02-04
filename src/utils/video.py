@@ -46,7 +46,7 @@ def read_video(video_path, size=(208, 320), target_fps=24, start_frame=0, end_fr
     # set transforms
     transforms = Compose([
         ToImage(),
-        Resize(size=int(np.min(size)*1.2)),
+        Resize(size=int(np.min(size)*1.)),
         CenterCrop(size=size),
         ToDtype(torch.float32, scale=True),
         Normalize(mean=[0.5], std=[0.5]),

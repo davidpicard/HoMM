@@ -164,7 +164,7 @@ class CC12MDataset(Dataset):
         text_data = text_file.read().decode("utf-8")
         text_file.close()
 
-        text_data = f"static image, {text_data}"
+        text_data = f"image: {text_data}, 300.0fps"
 
         video = self.transform(image)
         image_file.close()

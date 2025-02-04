@@ -96,7 +96,7 @@ class WebvidDataset(Dataset):
                     self.files.append(f"{dataset_path}/{row[-1]}")
                     prompt = row[-2]
                     if "shutterstock" in row[1]:
-                        prompt = f"{prompt}, shutterstock watermark"
+                        prompt = f"{prompt}, shutterstock, watermark"
                     self.txt.append(prompt)
                 count += 1
                 if count >= end:
@@ -122,7 +122,7 @@ class WebvidDataset(Dataset):
             if video.shape[1] < self.nb_frames:
                 m = self.nb_frames - video.shape[1]
                 video = F.pad(video, (0,0,0,0,0,m), "constant", 0)
-            txt = f"{txt}, {fps}fps"
+            txt = f"video: {txt}, {fps}fps"
         except:
             print(f"buggy video: {video_path}")
             video = torch.zeros((3, self.nb_frames, self.size[0], self.size[1]))

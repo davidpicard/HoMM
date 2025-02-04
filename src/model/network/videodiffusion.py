@@ -346,11 +346,11 @@ class TextVideoDiH(nn.Module):
         return mask
 
 def TVDiH_S2(**kwargs):
-    return TextVideoDiH(input_dim=16,
-                        text_dim=1024,
+    return TextVideoDiH(input_dim=128,
+                        text_dim=2048,
                         n_timesteps=1000,
-                        kernel_s=2,
-                        kernel_t=2,
+                        kernel_s=1,
+                        kernel_t=1,
                         dim=384,
                         n_layers=12,
                         order=2,
@@ -359,11 +359,11 @@ def TVDiH_S2(**kwargs):
                         **kwargs)
 
 def TVDiH_XL2(**kwargs):
-    return TextVideoDiH(input_dim=16,
-                        text_dim=1024,
+    return TextVideoDiH(input_dim=128,
+                        text_dim=2048,
                         n_timesteps=1000,
-                        kernel_s=2,
-                        kernel_t=2,
+                        kernel_s=1,
+                        kernel_t=1,
                         dim=1152,
                         n_layers=20,
                         order=2,
