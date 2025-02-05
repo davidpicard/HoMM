@@ -210,8 +210,8 @@ vae = VideoVAE().to(args.device)
 vae = torch.compile(vae)
 
 quantization_config = BitsAndBytesConfig(load_in_8bit=True)
-tokenizer = AutoTokenizer.from_pretrained("google/gemma-2b")
-text_encoder = AutoModelForCausalLM.from_pretrained("google/gemma-2b", quantization_config=quantization_config)
+tokenizer = AutoTokenizer.from_pretrained("google/gemma-2-2b")
+text_encoder = AutoModelForCausalLM.from_pretrained("google/gemma-2-2b", quantization_config=quantization_config)
 text_encoder.eval()
 
 dataset_path = os.path.split(args.path)[0]
@@ -233,24 +233,24 @@ for batch in tqdm(data):
         videos = videos.to(args.device)
         video_latents = vae_encode_video(videos, vae)
 
-        tokens = tokenizer.batch_encode_plus(txts, max_length=64,
-                                    padding="max_length", truncation=True, return_tensors="pt",
-                                    return_attention_mask=True)
-        input_ids = tokens.input_ids.to(args.device)
-        attention_mask = (tokens.attention_mask > 0.).to(args.device)
-        text_latents = text_encoder(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True).hidden_states[-1].detach()
-        # print(f"tl: {text_latents.shape}")
+    tokens = tokenizer.batch_encode_plus(txts, max_length=64,
+                                padding="max_length", truncation=True, return_tensors="pt",
+                                return_attention_mask=True)
+    input_ids = tokens.input_ids.to(args.device)
+    attention_mask = (tokens.attention_mask > 0.).to(args.device)
+    text_latents = text_encoder(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True).hidden_states[-1].detach()
+    # print(f"tl: {text_latents.shape}")
 
-        for i in range(video_latents.shape[0]):
-            name = f"{names[i].split(".")[0]}.npz"
-            buffer = io.BytesIO()
-            np.savez(buffer, video_latents[i].to(torch.float16).cpu().numpy(),
-                     text_latents[i].squeeze().to(torch.float16).cpu().numpy(),
-                     attention_mask[i].squeeze().to(torch.float16).cpu().numpy(),
-                     txts[i])
-            buffer.seek(0)
-            out.add_sample(name, buffer)
-            count += 1
+    for i in range(video_latents.shape[0]):
+        name = f"{names[i].split(".")[0]}.npz"
+        buffer = io.BytesIO()
+        np.savez(buffer, video_latents[i].to(torch.float16).cpu().numpy(),
+                 text_latents[i].squeeze().to(torch.float16).cpu().numpy(),
+                 attention_mask[i].squeeze().to(torch.float16).cpu().numpy(),
+                 txts[i])
+        buffer.seek(0)
+        out.add_sample(name, buffer)
+        count += 1
 out.close()
 print(f"Finished.")
 

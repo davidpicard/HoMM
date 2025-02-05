@@ -347,7 +347,7 @@ class TextVideoDiH(nn.Module):
 
 def TVDiH_S2(**kwargs):
     return TextVideoDiH(input_dim=128,
-                        text_dim=2048,
+                        text_dim=2304,
                         n_timesteps=1000,
                         kernel_s=1,
                         kernel_t=1,
@@ -360,7 +360,7 @@ def TVDiH_S2(**kwargs):
 
 def TVDiH_XL2(**kwargs):
     return TextVideoDiH(input_dim=128,
-                        text_dim=2048,
+                        text_dim=2304,
                         n_timesteps=1000,
                         kernel_s=1,
                         kernel_t=1,

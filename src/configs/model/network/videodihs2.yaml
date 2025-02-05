@@ -1,7 +1,7 @@
 _target_: model.network.videodiffusion.TextVideoDiH
 n_timesteps: 1000
 input_dim: 128
-text_dim: 2048
+text_dim: 2304
 dim: 384
 vid_size: ${data.size}
 vid_length: ${data.length}
