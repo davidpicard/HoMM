@@ -130,6 +130,7 @@ if __name__ == "__main__":
     parser.add_argument("--dir", type=str, required=True)
     parser.add_argument("--split", type=str, default="train")
     parser.add_argument("--repair", action="store_true")
+    parser.add_argument("--length", type=int, default=1)
     args = parser.parse_args()
 
     if args.repair:
@@ -151,7 +152,8 @@ if __name__ == "__main__":
             with tarfile.open(f"{args.dir}/{f}", "r") as tar:
                 members = tar.getmembers()
                 filelist.append({"filename":f"{args.dir}/{f}",
-                                      "count":len(members)})
+                                      "count":len(members),
+                                      "length": args.length})
         print(f"found: {filelist}")
         with open(f"{args.dir}/{split}index.json", "w") as f:
             json.dump(filelist, f)
