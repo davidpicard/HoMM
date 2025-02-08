@@ -125,6 +125,7 @@ class CC12MDataset(Dataset):
             filename =  os.path.join(data_dir, f'{i:05d}.tar')
             if os.path.isfile(filename):
                 tar_files.append(filename)
+        print(f"tar files: {tar_files}")
         self.tar_files = tar_files
         self.samples = self._extract_samples()
         self.tar_cache = LRUCache(capacity=cache_capacity)
@@ -218,7 +219,7 @@ text_encoder.eval()
 
 dataset_path = os.path.split(args.path)[0]
 print(f"dataset path: {dataset_path}")
-out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split, tar_offset=args.start//args.chunk_size, length=np.ceil(args.nb_frames/8))
+out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split, tar_offset=args.start, length=np.ceil(args.nb_frames/8))
 out.resume(args.start)
 
 count = 0
