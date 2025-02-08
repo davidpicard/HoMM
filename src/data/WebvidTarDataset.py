@@ -51,6 +51,7 @@ class WebvidTarDataset(Dataset):
     def __init__(self, dirname, split="train", seed=3407):
         self.dir = dirname
         self.split = "val_" if split == "val" else ""
+        self.seq_length = []
         self.filenames = []
         self.counts = []
         # self.q = []
@@ -65,6 +66,7 @@ class WebvidTarDataset(Dataset):
                 for d in j:
                     self.filenames.append(d['filename'])
                     self.counts.append(d['count'])
+                    self.seq_length.append(np.int32(d.get('length', 1)))
         self.total_count = sum(self.counts)
         assert self.total_count > 0
         self.transform = None
@@ -73,6 +75,7 @@ class WebvidTarDataset(Dataset):
             perm = torch.randperm(len(self.filenames), generator=self.generator)
             self.filenames = [self.filenames[i] for i in perm]
             self.counts = [self.counts[i] for i in perm]
+            self.seq_length = [self.seq_length[i] for i in perm]
 
         self.cache = LRUCache(capacity=256)
         self.lock = threading.Lock()
@@ -99,6 +102,9 @@ class WebvidTarDataset(Dataset):
         f = tar.extractfile(member)
         data = np.load(io.BytesIO(f.read()))
         video_latents = torch.from_numpy(data['arr_0']).float()
+        # print(f"{self.filenames[current_file_id]} {idx} v shape1: {video_latents.shape}")
+        video_latents = video_latents.repeat(1, self.seq_length[current_file_id], 1, 1)
+        # print(f"{self.filenames[current_file_id]} {idx} v shape2: {video_latents.shape}")
         text_latents = torch.from_numpy(data['arr_1']).float()
         mask_latents = torch.from_numpy(data['arr_2']).float()
         txt = data['arr_3'].tobytes()
@@ -160,7 +166,7 @@ if __name__ == "__main__":
 
         for samples in train:
             frames, text, mask, ori_txt = samples
-            frames = frames.to("cuda").squeeze()
+            frames = frames.to("cuda")[0]
             print(f"sample shape: {frames.shape}")
             ori_txt = ori_txt[0].decode('utf-8')
             ori_txt = ori_txt.replace('\x00', '')
@@ -174,7 +180,7 @@ if __name__ == "__main__":
                 plt.imshow(einops.rearrange(img, "c h w -> h w c"))
                 plt.title(f"tl: {text.shape} m: {mask.sum()} txt: {ori_txt}")
                 plt.show()
-                plt.pause(0.1)
+                plt.pause(0.02)
 
             decoded = decoded.permute(1,0,2,3)
             write_video(decoded, "output.mp4", 16)

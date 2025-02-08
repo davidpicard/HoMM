@@ -21,10 +21,11 @@ from utils.video import read_video, vae_encode_video, VideoVAE
 
 
 class TarWriter():
-    def __init__(self, dirname, chunk_size=100, split="train", tar_offset=0):
+    def __init__(self, dirname, chunk_size=100, split="train", tar_offset=0, length=-1):
         import os, io, tarfile, json
         self.dir = dirname
         self.chunks_size = chunk_size
+        self.n_frames = length
         self.split = "val_" if split == "val" else ""
         try:
             os.makedirs(dirname, exist_ok=True)
@@ -67,7 +68,8 @@ class TarWriter():
         if self.current_tar is not None:
             self.current_tar.close()
             self.filelist.append({"filename":self.current_filename,
-                                  "count":self.current_sample_count})
+                                  "count":self.current_sample_count,
+                                  "length": int(self.n_frames)})
             with open(f"{self.dir}/{self.split}index{self.index_num}.json", "w") as f:
                 json.dump(self.filelist, f)
             self.current_tar = None
@@ -114,7 +116,7 @@ class CC12MDataset(Dataset):
             CenterCrop(size=size),
             ToDtype(torch.float32, scale=True),
             Normalize(mean=[0.5], std=[0.5]),
-            Lambda(lambda x: torch.tile(x.unsqueeze(1), (1, nb_frames, 1, 1)))
+            Lambda(lambda x: torch.tile(x.unsqueeze(1), (1, 1, 1, 1)))
         ])
 
         tar_files = []
@@ -164,7 +166,7 @@ class CC12MDataset(Dataset):
         text_data = text_file.read().decode("utf-8")
         text_file.close()
 
-        text_data = f"image: {text_data}, 300.0fps"
+        text_data = f"image: {text_data}, 300.0fps".replace ("<PERSON>", "")
 
         video = self.transform(image)
         image_file.close()
@@ -216,7 +218,7 @@ text_encoder.eval()
 
 dataset_path = os.path.split(args.path)[0]
 print(f"dataset path: {dataset_path}")
-out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split, tar_offset=args.start//args.chunk_size)
+out = TarWriter(args.output, chunk_size=args.chunk_size, split=args.split, tar_offset=args.start//args.chunk_size, length=np.ceil(args.nb_frames/8))
 out.resume(args.start)
 
 count = 0
