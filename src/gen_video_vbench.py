@@ -2,7 +2,7 @@ import os
 import argparse
 import torch
 from tqdm import tqdm
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, BitsAndBytesConfig, AutoModelForCausalLM
 
 from model.sampler.sampler import VideoHeunVelocitySampler
 from utils.video import write_video
@@ -49,10 +49,10 @@ plmodule = None
 print("loading VAE")
 vae = VideoVAE().to(device)
 print("loading text encoder")
-text_encoder = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large", torch_dtype=torch.bfloat16).encoder.to(device)
+quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+tokenizer = AutoTokenizer.from_pretrained("google/gemma-2-2b")
+text_encoder = AutoModelForCausalLM.from_pretrained("google/gemma-2-2b", quantization_config=quantization_config)
 text_encoder.eval()
-tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
-
 sampler = VideoHeunVelocitySampler(model)
 
 gen = torch.Generator(device=device)
