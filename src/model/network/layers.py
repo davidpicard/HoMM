@@ -100,6 +100,29 @@ class HoM(nn.Module):
         # aggregation
         return self.ag_proj(sh)
 
+    def state_forward(self, xq, xc, mask=None, state=None):
+        if xc is None:
+            xc = xq # self attention
+
+        s = self.se_proj(xq)
+        xc = self.ho_proj(xc)
+        h_current = high_order_aggregation_(xc, self.order, mask)
+        n_current = h_current.shape[1]
+
+        if state is not None:
+            h_past = state['h']
+            n_past = state['n']
+            h = (n_past * h_past + n_current * h_current) / (n_past+n_current)
+        else:
+            h = h_current
+            n_past = 0
+
+        new_state = {'h': h, 'n': n_past + n_current}
+
+        sh = high_order_selection_(s, h)
+        return self.ag_proj(sh), new_state
+
+
 
 class HoMLayer(nn.Module):
     def __init__(self, dim, order, order_expand, ffw_expand, dropout=0.):

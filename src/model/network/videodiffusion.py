@@ -226,6 +226,28 @@ class TextVideoDiHBlock(nn.Module):
 
         return x
 
+    def state_forward(self, x, t, c, mask, state=None):
+        sx, bx, sc, bc, s1, b1, s2, b2 = self.cond_mlp(t).chunk(8, -1)
+        gc, g1, g2 = self.gate_mlp(t).chunk(3, -1)
+
+        # ca
+        x_ln = modulation(self.x_mha_ln(x), sx, bx)
+        c_ln = modulation(self.c_mha_ln(c), sc, bc)
+        x = x + self.c_hom(x_ln, c_ln, mask) * (1 + gc)
+
+        # sa
+        x_ln = modulation(self.mha_ln(x), s1, b1)
+        o, state = self.hom.state_forward(x_ln, x_ln, state=state)
+        # print(f"h: {o.shape} s: {state['h'].shape} n:{state['n']}")
+        x = x + o * (1 + g1)
+        # x = x + checkpoint(self.hom,x_ln, use_reentrant=False)*(1+g1)
+
+        # ffw
+        x_ln = modulation(self.ffw_ln(x), s2, b2)
+        x = x + self.ffw(x_ln) * (1 + g2)
+
+        return x, state
+
 
 class TextVideoDiH(nn.Module):
     def __init__(self,
@@ -337,6 +359,46 @@ class TextVideoDiH(nn.Module):
 
         return out
 
+    def frame_by_frame_forward(self, vid, time, txt, mask):
+        b, c, t, h, w = vid.shape
+        # print(f"vid: {vid.shape}")
+
+        # patchify
+        x = einops.rearrange(vid, "b c (t s) (h k) (w l) -> b (t h w) (s k l c)", s=self.kernel_t, k=self.kernel_s, l=self.kernel_s)
+        x = self.in_proj(x)
+        pos_emb = sincos_embedding_3d(self.n_frames, self.n_patches_h, self.n_patches_w, self.dim).to(x.device)
+        pos_emb = einops.rearrange(pos_emb, "b t h w d -> b (t h w) d")
+        x = x + pos_emb * torch.ones((b, 1, 1)).to(x.device)
+
+        # embed time
+        time = torch.einsum("b, n -> bn", time, self.freqs)
+        t = torch.cat([time.cos(), time.sin()], dim=1)
+        t = self.time_emb(t).unsqueeze(1)
+        # cond
+        c = self.text_emb(txt)
+
+        # forward pass
+        state = [None for _ in range(self.n_layers)]
+        out = []
+        frame_tokens = self.n_patches_h*self.n_patches_w
+        for f in range(self.n_frames):
+            xf = x[:, f * frame_tokens:(f + 1) * frame_tokens, :]
+            for l in range(self.n_layers):
+                xf, s = self.layers[l].state_forward(xf, t, c, mask, state[l])
+                state[l] = s
+            out.append(xf)
+        x = torch.cat(out, dim=1)
+        s, b = self.out_mod(t).chunk(2, dim=-1)
+        out = modulation(self.out_ln(x), s, b)
+        # out = x
+        out = self.out_proj(out)
+
+        # depatchify
+        out = einops.rearrange(out, 'b (t h w) (s k l c) -> b c (t s) (h k) (w l)',
+                               h=self.n_patches_h, w=self.n_patches_w, k=self.kernel_s, l=self.kernel_s, s=self.kernel_t)
+
+        return out
+
     def make_block_causal_temporal_mask(self):
         total_tokens = self.n_patches_h*self.n_patches_w*self.n_frames
         frame_tokens = self.n_patches_h*self.n_patches_w
@@ -352,6 +414,19 @@ def TVDiH_S2(**kwargs):
                         kernel_s=1,
                         kernel_t=1,
                         dim=384,
+                        n_layers=12,
+                        order=2,
+                        order_expand=2,
+                        ffw_expand=3,
+                        **kwargs)
+
+def TVDiH_B2(**kwargs):
+    return TextVideoDiH(input_dim=128,
+                        text_dim=2304,
+                        n_timesteps=1000,
+                        kernel_s=1,
+                        kernel_t=1,
+                        dim=768,
                         n_layers=12,
                         order=2,
                         order_expand=2,
