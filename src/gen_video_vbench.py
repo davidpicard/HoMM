@@ -79,11 +79,12 @@ print(f"doing dimension {dimension}")
 with open(f'{args.vbench_path}/prompts_per_dimension/{dimension}.txt', 'r') as f:
     prompt_list = f.readlines()
 prompt_list = [prompt.strip() for prompt in prompt_list]
+print(f"{len(prompt_list)} prompts in the list")
 
 for prompt in prompt_list:
     # perform sampling
     print(f"processing text: {prompt}")
-    tokens = tokenizer.batch_encode_plus([prompt], max_length=64,
+    tokens = tokenizer.batch_encode_plus([f"video: {prompt}"], max_length=64,
                                          padding="max_length", truncation=True, return_tensors="pt",
                                          return_attention_mask=True)
     input_ids = tokens.input_ids.to(device)
@@ -114,4 +115,4 @@ for prompt in prompt_list:
             # print(f"samples shape: {samples.shape}")
             v = vae_decode_video(samples[index].squeeze().detach(), vae, batch_size=40).cpu()
             print("writing video")
-            write_video(v, f"{args.output}/{prompt}-{index}.mp4", target_fps=16)
+            write_video(v, f"{args.output}/{prompt}-{index}.mp4", target_fps=25)
