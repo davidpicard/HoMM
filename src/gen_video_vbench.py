@@ -88,7 +88,7 @@ for prompt in prompt_list:
                                          return_attention_mask=True)
     input_ids = tokens.input_ids.to(device)
     mask = (tokens.attention_mask > 0.).to(device)
-    latents = text_encoder(input_ids=input_ids, attention_mask=mask).last_hidden_state.detach()
+    latents = text_encoder(input_ids=input_ids, attention_mask=mask, output_hidden_states=True).hidden_states[-1].detach()
     with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=True):
 
         print(f"generating video sample")
