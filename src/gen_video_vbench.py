@@ -81,15 +81,15 @@ with open(f'{args.vbench_path}/prompts_per_dimension/{dimension}.txt', 'r') as f
 prompt_list = [prompt.strip() for prompt in prompt_list]
 
 for prompt in prompt_list:
+    # perform sampling
+    print(f"processing text: {prompt}")
+    tokens = tokenizer.batch_encode_plus([prompt], max_length=64,
+                                         padding="max_length", truncation=True, return_tensors="pt",
+                                         return_attention_mask=True)
+    input_ids = tokens.input_ids.to(device)
+    mask = (tokens.attention_mask > 0.).to(device)
+    latents = text_encoder(input_ids=input_ids, attention_mask=mask).last_hidden_state.detach()
     with torch.autocast(device_type=device, dtype=torch.bfloat16, enabled=True):
-        # perform sampling
-        print(f"processing text: {prompt}")
-        tokens = tokenizer.batch_encode_plus([prompt], max_length=64,
-                                             padding="max_length", truncation=True, return_tensors="pt",
-                                             return_attention_mask=True)
-        input_ids = tokens.input_ids.to(device)
-        mask = (tokens.attention_mask > 0.).to(device)
-        latents = text_encoder(input_ids=input_ids, attention_mask=mask).last_hidden_state.detach()
 
         print(f"generating video sample")
         samples = torch.randn(size=(5, model.input_dim, args.length, vid_size[0], vid_size[1]),
