@@ -33,7 +33,7 @@ class ema_cfg:
     beta = 0.999
     update_after_step = 10000
     update_every = 10
-ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'))
+ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'), weights_only=False)
 plmodule = VideoDiffusionModule(model, None, None, None, None, None, ema_cfg=ema_cfg(), block_causal=True)
 plmodule.load_state_dict(ckpt['state_dict'], strict=False)
 ckpt = None
