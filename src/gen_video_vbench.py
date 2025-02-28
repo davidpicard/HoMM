@@ -2,7 +2,7 @@ import os
 import argparse
 import torch
 from tqdm import tqdm
-from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, BitsAndBytesConfig, AutoModelForCausalLM
+from transformers import AutoTokenizer, BitsAndBytesConfig, AutoModelForCausalLM
 
 from model.sampler.sampler import VideoHeunVelocitySampler
 from utils.video import write_video
@@ -42,8 +42,7 @@ model.eval()
 model.compile()
 temporal_mask = plmodule.temporal_mask.to(device) if args.block_causal else None
 print(f"block causal model: {temporal_mask}")
-vid_size = args.size.split("x")
-vid_size = (int(vid_size[0]), int(vid_size[1]))
+vid_size = model.vid_size
 plmodule = None
 
 print("loading VAE")
@@ -58,18 +57,14 @@ sampler = VideoHeunVelocitySampler(model)
 gen = torch.Generator(device=device)
 gen.manual_seed(3407)
 
-txt = [
-    "sunrise over the city",
-]
-
 dimension_list = [
     'appearance_style',
     'color',
-   'human_action',
-   'multiple_objects',
+    'human_action',
+    'multiple_objects',
     'object_class',
     'scene',
-   'spatial_relationship',
+    'spatial_relationship',
     'subject_consistency',
     'temporal_flickering',
     'temporal_style',
