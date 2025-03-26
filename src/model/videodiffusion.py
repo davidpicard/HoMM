@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import lightning.pytorch as L
 import torch
@@ -74,6 +76,8 @@ class VideoDiffusionModule(L.LightningModule):
         # time = torch.linspace(0, (b-1)/b, b) + torch.rand(b)/b
         # time = (time*self.n_timesteps).to(img.device)
         time = torch.randint(0, self.n_timesteps, (b,)).to(vid_latents.device)
+        # shift schedule like SD3
+        time = self.n_timesteps * math.exp(1.) / (math.exp(1.) + (self.n_timesteps / time - 1))
         eps = torch.randn_like(vid_latents)
         n_img = self.sampler.add_noise(vid_latents, eps, time)
 
