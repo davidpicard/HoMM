@@ -532,6 +532,7 @@ class VideoHeunVelocitySampler():
 
             dip1 = self._predict(xi, tp1, txt, mask, temporal_mask, cfg)
             samples = samples - dt*(di + dip1)/2
+            samples.clamp(-1.1, 1.1)
 
             if step_callback is not None:
                 step_callback(i, samples, samples)
