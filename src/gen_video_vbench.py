@@ -111,7 +111,7 @@ for prompt in prompt_list:
             )
 
         # sample 5 videos for each prompt
-        l = min(len(prompt, 100))
+        l = min(len(prompt), 100)
         filename = prompt[0:l]
         for index in range(5):
             # print(f"samples shape: {samples.shape}")
