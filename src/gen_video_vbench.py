@@ -115,8 +115,10 @@ for prompt in prompt_list:
             )
 
         # sample 5 videos for each prompt
+        l = min(len(prompt), 100)
+        filename = prompt[0:l]
         for index in range(5):
             # print(f"samples shape: {samples.shape}")
             v = vae_decode_video(samples[index].squeeze().detach(), vae, batch_size=40).cpu()
             print("writing video")
-            write_video(v, f"{args.output}/{prompt}-{index}.mp4", target_fps=16)
+            write_video(v, f"{args.output}/{filename}-{index}.mp4", target_fps=16)
