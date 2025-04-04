@@ -37,8 +37,8 @@ ckpt = torch.load(args.checkpoint, map_location=torch.device('cpu'), weights_onl
 plmodule = VideoDiffusionModule(model, None, None, None, None, None, ema_cfg=ema_cfg(), block_causal=True)
 plmodule.load_state_dict(ckpt['state_dict'], strict=False)
 ckpt = None
-# model = plmodule.ema.ema_model.to(device)
-model = plmodule.model.to(device)
+model = plmodule.ema.ema_model.to(device)
+# model = plmodule.model.to(device)
 model.eval()
 model.compile()
 temporal_mask = plmodule.temporal_mask.to(device) if args.block_causal else None
