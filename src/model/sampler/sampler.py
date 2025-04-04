@@ -1,3 +1,5 @@
+import math
+
 import einops
 import torch
 
@@ -493,8 +495,9 @@ class VideoHeunVelocitySampler():
         return (1 - sigma) * x + sigma * noise
 
     def set_timesteps(self, num_inference_steps):
-        timesteps = torch.linspace(1.0, self.train_timesteps - 1, num_inference_steps + 1)
         self.num_inference_steps = num_inference_steps
+        timesteps = torch.linspace(1.0, self.train_timesteps - 1, num_inference_steps + 1)
+        timesteps = self.num_inference_steps * math.exp(1.) / (math.exp(1.) + (self.num_inference_steps / timesteps - 1))
         self.timesteps = timesteps.flip(0)
         self.noise_prev = None
 
@@ -532,7 +535,7 @@ class VideoHeunVelocitySampler():
 
             dip1 = self._predict(xi, tp1, txt, mask, temporal_mask, cfg)
             samples = samples - dt*(di + dip1)/2
-            samples.clamp(-1.1, 1.1)
+            samples.clamp(-1.0, 1.0)
 
             if step_callback is not None:
                 step_callback(i, samples, samples)
