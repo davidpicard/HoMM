@@ -496,7 +496,7 @@ class VideoHeunVelocitySampler():
 
     def set_timesteps(self, num_inference_steps):
         timesteps = torch.linspace(1.0, self.train_timesteps - 1, num_inference_steps + 1)
-        timesteps = self.train_timesteps * math.exp(1.5) / (math.exp(1.5) + (self.train_timesteps / timesteps - 1))
+        timesteps = self.train_timesteps * math.exp(2.) / (math.exp(2.) + (self.train_timesteps / timesteps - 1))
         self.num_inference_steps = num_inference_steps
         self.timesteps = timesteps.flip(0)
         self.noise_prev = None
