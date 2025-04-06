@@ -1,0 +1,13 @@
+_target_: model.network.videodiffusion.TextVideoDiH
+n_timesteps: 1000
+input_dim: 128
+text_dim: 2304
+dim: 1024
+vid_size: ${data.size}
+vid_length: ${data.length}
+kernel_s: 1
+kernel_t: 2
+n_layers: 16
+order: 2
+order_expand: 2
+ffw_expand: 2

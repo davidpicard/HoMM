@@ -198,52 +198,51 @@ class TextVideoDiHBlock(nn.Module):
         self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand * dim, bias=True),
                                  nn.GELU(),
                                  nn.Linear(ffw_expand * dim, dim, bias=True))
-        self.cond_mlp = nn.Sequential(
-                                 nn.SiLU(),
-                                 nn.Linear(dim, 8 * dim, bias=True))
+        # self.cond_mlp = nn.Sequential(
+        #                          nn.SiLU(),
+        #                          nn.Linear(dim, 8 * dim, bias=True))
         self.gate_mlp = nn.Sequential(
                                  nn.SiLU(),
                                  nn.Linear(dim, 3 * dim, bias=True))
 
 
     def forward(self, x, t, c, mask, temporal_mask=None):
-        sx, bx, sc, bc, s1, b1, s2, b2 = self.cond_mlp(t).chunk(8, -1)
+        # sx, bx, sc, bc, s1, b1, s2, b2 = self.cond_mlp(t).chunk(8, -1)
         gc, g1, g2 = self.gate_mlp(t).chunk(3, -1)
 
-        # ca
-        x_ln = modulation(self.x_mha_ln(x), sx, bx)
-        c_ln = modulation(self.c_mha_ln(c), sc, bc)
-        x = x + self.c_hom(x_ln, c_ln, mask) * (1 + gc)
-
         # sa
-        x_ln = modulation(self.mha_ln(x), s1, b1)
+        x_ln = self.mha_ln(x)
         x = x + self.hom(x_ln, mask=temporal_mask) * (1 + g1)
         # x = x + checkpoint(self.hom,x_ln, use_reentrant=False)*(1+g1)
 
+        # ca
+        x_ln = self.x_mha_ln(x)
+        c_ln = self.c_mha_ln(c)
+        x = x + self.c_hom(x_ln, c_ln, mask) * (1 + gc)
+
         #ffw
-        x_ln = modulation(self.ffw_ln(x), s2, b2)
+        x_ln = self.ffw_ln(x)
         x = x + self.ffw(x_ln)*(1+g2)
 
         return x
 
     def state_forward(self, x, t, c, mask, state=None):
-        sx, bx, sc, bc, s1, b1, s2, b2 = self.cond_mlp(t).chunk(8, -1)
+        # sx, bx, sc, bc, s1, b1, s2, b2 = self.cond_mlp(t).chunk(8, -1)
         gc, g1, g2 = self.gate_mlp(t).chunk(3, -1)
 
-        # ca
-        x_ln = modulation(self.x_mha_ln(x), sx, bx)
-        c_ln = modulation(self.c_mha_ln(c), sc, bc)
-        x = x + self.c_hom(x_ln, c_ln, mask) * (1 + gc)
-
         # sa
-        x_ln = modulation(self.mha_ln(x), s1, b1)
+        x_ln = self.mha_ln(x)
         o, state = self.hom.state_forward(x_ln, x_ln, state=state)
         # print(f"h: {o.shape} s: {state['h'].shape} n:{state['n']}")
         x = x + o * (1 + g1)
-        # x = x + checkpoint(self.hom,x_ln, use_reentrant=False)*(1+g1)
+
+        # ca
+        x_ln = self.x_mha_ln(x)
+        c_ln = self.c_mha_ln(c)
+        x = x + self.c_hom(x_ln, c_ln, mask) * (1 + gc)
 
         # ffw
-        x_ln = modulation(self.ffw_ln(x), s2, b2)
+        x_ln = self.ffw_ln(x)
         x = x + self.ffw(x_ln) * (1 + g2)
 
         return x, state
@@ -296,10 +295,10 @@ class TextVideoDiH(nn.Module):
             [TextVideoDiHBlock(dim=dim, order=order, order_expand=order_expand, ffw_expand=ffw_expand) for _ in range(n_layers)])
         self.out_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.out_proj = nn.Linear(dim, kernel_t * kernel_s * kernel_s * input_dim, bias=True)
-        self.out_mod = nn.Sequential(
-            nn.SiLU(),
-            nn.Linear(dim, 2 * dim, bias=True)
-        )
+        # self.out_mod = nn.Sequential(
+        #     nn.SiLU(),
+        #     nn.Linear(dim, 2 * dim, bias=True)
+        # )
 
         # init
         # layers
@@ -311,9 +310,9 @@ class TextVideoDiH(nn.Module):
         self.apply(init_weights_)
         # zeros modulation gates
         for l in self.layers:
-            m = l.cond_mlp[-1]
-            nn.init.zeros_(m.weight)
-            nn.init.zeros_(m.bias)
+            # m = l.cond_mlp[-1]
+            # nn.init.zeros_(m.weight)
+            # nn.init.zeros_(m.bias)
             m = l.gate_mlp[-1]
             nn.init.zeros_(m.weight)
             nn.init.constant_(m.bias, -1.)
@@ -324,8 +323,8 @@ class TextVideoDiH(nn.Module):
         # output
         nn.init.zeros_(self.out_proj.weight)
         nn.init.zeros_(self.out_proj.bias)
-        nn.init.zeros_(self.out_mod[-1].weight)
-        nn.init.zeros_(self.out_mod[-1].bias)
+        # nn.init.zeros_(self.out_mod[-1].weight)
+        # nn.init.zeros_(self.out_mod[-1].bias)
 
     def forward(self, vid, time, txt, mask, temporal_mask=None):
         b, c, t, h, w = vid.shape
@@ -344,13 +343,15 @@ class TextVideoDiH(nn.Module):
         t = self.time_emb(t).unsqueeze(1)
         # cond
         c = self.text_emb(txt)
+        c = torch.cat([t, c],dim=1)
+        mask = torch.cat([torch.ones(b, 1).to(mask.device), mask], dim=1)
 
         # forward pass
         for l in range(self.n_layers):
             x = self.layers[l](x, t, c, mask, temporal_mask=temporal_mask)
-        s, b = self.out_mod(t).chunk(2, dim=-1)
-        out = modulation(self.out_ln(x), s, b)
-        # out = x
+        # s, b = self.out_mod(t).chunk(2, dim=-1)
+        # out = self.out_ln(x)
+        out = x
         out = self.out_proj(out)
 
         # depatchify
@@ -376,6 +377,7 @@ class TextVideoDiH(nn.Module):
         t = self.time_emb(t).unsqueeze(1)
         # cond
         c = self.text_emb(txt)
+        c = torch.cat([t, c],dim=1)
 
         # forward pass
         state = [None for _ in range(self.n_layers)]
@@ -388,9 +390,9 @@ class TextVideoDiH(nn.Module):
                 state[l] = s
             out.append(xf)
         x = torch.cat(out, dim=1)
-        s, b = self.out_mod(t).chunk(2, dim=-1)
-        out = modulation(self.out_ln(x), s, b)
-        # out = x
+        # s, b = self.out_mod(t).chunk(2, dim=-1)
+        # out = modulation(self.out_ln(x), s, b)
+        out = x
         out = self.out_proj(out)
 
         # depatchify
@@ -431,6 +433,19 @@ def TVDiH_B2(**kwargs):
                         order=2,
                         order_expand=2,
                         ffw_expand=3,
+                        **kwargs)
+
+def TVDiH_L2(**kwargs):
+    return TextVideoDiH(input_dim=128,
+                        text_dim=2304,
+                        n_timesteps=1000,
+                        kernel_s=2,
+                        kernel_t=1,
+                        dim=1024,
+                        n_layers=16,
+                        order=2,
+                        order_expand=2,
+                        ffw_expand=2,
                         **kwargs)
 
 def TVDiH_XL2(**kwargs):
