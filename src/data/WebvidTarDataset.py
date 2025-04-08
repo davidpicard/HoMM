@@ -41,15 +41,16 @@ class LRUCache:
             tar.close()
 
 
-def build_webvid_tar(data_dir):
-    train = WebvidTarDataset(data_dir)
-    val = WebvidTarDataset(data_dir, split="val")
+def build_webvid_tar(data_dir, length):
+    train = WebvidTarDataset(data_dir, length)
+    val = WebvidTarDataset(data_dir, length, split="val")
     return train, val
 
 
 class WebvidTarDataset(Dataset):
-    def __init__(self, dirname, split="train", seed=3407):
+    def __init__(self, dirname, length=0, split="train", seed=3407):
         self.dir = dirname
+        self.length = length
         self.split = "val_" if split == "val" else ""
         self.seq_length = []
         self.filenames = []
@@ -104,6 +105,8 @@ class WebvidTarDataset(Dataset):
         video_latents = torch.from_numpy(data['arr_0']).float()
         # print(f"{self.filenames[current_file_id]} {idx} v shape1: {video_latents.shape}")
         video_latents = video_latents.repeat(1, self.seq_length[current_file_id], 1, 1)
+        if self.length > 0:
+            video_latents = video_latents[:, 0:self.length, :, :]
         # print(f"{self.filenames[current_file_id]} {idx} v shape2: {video_latents.shape}")
         text_latents = torch.from_numpy(data['arr_1']).float()
         mask_latents = torch.from_numpy(data['arr_2']).float()

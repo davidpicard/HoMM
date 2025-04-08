@@ -11,6 +11,7 @@ dataset_builder:
   _partial_: true
   _target_: data.WebvidTarDataset.build_webvid_tar
   data_dir: ${data_dir}/webvid
+  length: ${data.length}
 
 datamodule:
   _target_: utils.datamodule.ImageDataModule
