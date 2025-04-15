@@ -104,7 +104,7 @@ for prompt in prompt_list:
             samples = sampler.sample(
                 samples,
                 latents*ones,
-                mask*ones,
+                mask*torch.ones((5, 1)).to(device),
                 temporal_mask=temporal_mask,
                 cfg=args.cfg,
                 num_inference_steps=args.n_timesteps,
