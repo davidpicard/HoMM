@@ -48,28 +48,29 @@ class LogGenVideo(Callback):
                 # sample images
                 device = pl_module.device
                 gen = torch.Generator(device=device)
-                gen.manual_seed(3407)
-                samples = torch.randn(size=(2, vid_latents.shape[1], vid_latents.shape[2], vid_latents.shape[3], vid_latents.shape[4]),
-                                      generator=gen,
-                                      dtype=vid_latents.dtype,
-                                      layout=vid_latents.layout,
-                                      device=device)
-                temporal_mask = pl_module.temporal_mask
-                latents = torch.from_numpy(self.latents).float().to(device)
-                mask = torch.from_numpy(self.mask).float().to(device)
-                samples = pl_module.sampler.sample(
-                    samples,
-                    latents,
-                    mask,
-                    temporal_mask=temporal_mask,
-                    cfg=4,
-                    num_inference_steps=50,
-                )
-                vae = self.vae.to(samples.device)
                 video = []
-                for frames in samples:
-                    v = vae_decode_video(frames.detach(), vae).cpu()
-                    video.append((255*v).type(torch.uint8).permute(1,0,2,3).numpy())
-                logger.log_video("video", video, fps=[16 for i in range(2)], caption=self.txt)
+                for i in range(len(self.txt)//2):
+                    gen.manual_seed(3407)
+                    samples = torch.randn(size=(2, vid_latents.shape[1], vid_latents.shape[2], vid_latents.shape[3], vid_latents.shape[4]),
+                                          generator=gen,
+                                          dtype=vid_latents.dtype,
+                                          layout=vid_latents.layout,
+                                          device=device)
+                    temporal_mask = pl_module.temporal_mask
+                    latents = torch.from_numpy(self.latents[2*i:2*i+2]).float().to(device)
+                    mask = torch.from_numpy(self.mask[2*i:2*i+2]).float().to(device)
+                    samples = pl_module.sampler.sample(
+                        samples,
+                        latents,
+                        mask,
+                        temporal_mask=temporal_mask,
+                        cfg=8,
+                        num_inference_steps=50,
+                    )
+                    vae = self.vae.to(samples.device)
+                    for frames in samples:
+                        v = vae_decode_video(frames.detach(), vae).cpu()
+                        video.append((255*v).type(torch.uint8).permute(1,0,2,3).numpy())
+                logger.log_video("video", video, fps=[16 for i in range(len(video))], caption=self.txt)
 
 
