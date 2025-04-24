@@ -49,16 +49,17 @@ class LogGenVideo(Callback):
                 device = pl_module.device
                 gen = torch.Generator(device=device)
                 video = []
-                for i in range(len(self.txt)//2):
+                q = min(len(self.txt), 10)
+                for i in range(len(self.txt)//q):
                     gen.manual_seed(3407)
-                    samples = torch.randn(size=(2, vid_latents.shape[1], vid_latents.shape[2], vid_latents.shape[3], vid_latents.shape[4]),
+                    samples = torch.randn(size=(q, vid_latents.shape[1], vid_latents.shape[2], vid_latents.shape[3], vid_latents.shape[4]),
                                           generator=gen,
                                           dtype=vid_latents.dtype,
                                           layout=vid_latents.layout,
                                           device=device)
                     temporal_mask = pl_module.temporal_mask
-                    latents = torch.from_numpy(self.latents[2*i:2*i+2]).float().to(device)
-                    mask = torch.from_numpy(self.mask[2*i:2*i+2]).float().to(device)
+                    latents = torch.from_numpy(self.latents[q*i:q*i+q]).float().to(device)
+                    mask = torch.from_numpy(self.mask[q*i:q*i+q]).float().to(device)
                     samples = pl_module.sampler.sample(
                         samples,
                         latents,
