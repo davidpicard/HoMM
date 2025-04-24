@@ -104,7 +104,9 @@ class WebvidTarDataset(Dataset):
         data = np.load(io.BytesIO(f.read()))
         video_latents = torch.from_numpy(data['arr_0']).float()
         # print(f"{self.filenames[current_file_id]} {idx} v shape1: {video_latents.shape}")
-        video_latents = video_latents.repeat(1, self.seq_length[current_file_id], 1, 1)
+        if video_latents.shape[1] == 1:
+            l = max(self.length, self.seq_length[current_file_id])
+            video_latents = video_latents.repeat(1, l, 1, 1)
         if self.length > 0:
             video_latents = video_latents[:, 0:self.length, :, :]
         # print(f"{self.filenames[current_file_id]} {idx} v shape2: {video_latents.shape}")
