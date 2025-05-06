@@ -1,0 +1,18 @@
+defaults:
+  - _self_
+
+full_batch_size: 1024
+full_val_batch_size: 128
+size: 256
+name: CC12M
+
+datamodule:
+  _target_: data.CC12M.CC12MDataModule
+  root_dir: ${data_dir}
+  max_text_embedding_tokens: 64
+  embedding_size: 2048
+  batch_size: ${data.full_batch_size}
+  val_batch_size: ${data.full_val_batch_size}
+  num_workers: ${computer.num_workers}
+  img_size: ${data.size}
+

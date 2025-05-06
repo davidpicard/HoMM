@@ -1,0 +1,16 @@
+defaults:
+  - network: videodihb2
+  - loss: MSE
+  - optimizer: adamw
+  - lr_scheduler: warmup_cosine_decay
+  - ema: constant
+
+name: T2IPoMDiff
+instance:
+  _target_: model.t2idiffusion.T2IDiffusionModule
+  model: ${model.network}
+  loss: ${model.loss}
+  optimizer_cfg: ${model.optimizer}
+  lr_scheduler_builder: ${model.lr_scheduler}
+  ema_cfg: ${model.ema}
+
