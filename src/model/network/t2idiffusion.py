@@ -116,7 +116,6 @@ class TextImageDiH(nn.Module):
 
     def forward(self, img, time, txt, mask, temporal_mask=None):
         b, c, h, w = img.shape
-        print(f"img: {img.shape}")
 
         # patchify
         x = einops.rearrange(img, "b c (h k) (w l) -> b (h w) (k l c)", k=self.kernel_s, l=self.kernel_s)
