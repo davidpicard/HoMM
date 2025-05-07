@@ -46,7 +46,7 @@ class T2IDiffusionModule(L.LightningModule):
 
 
         # do optim
-        self.model.compile()
+        # self.model.compile()
 
         # noise scheduler
         self.n_timesteps = model.n_timesteps
