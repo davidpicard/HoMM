@@ -145,7 +145,7 @@ class CC12MDataModule(L.LightningDataModule):
                 workersplitter=wds.split_by_worker,
             )
             .shuffle(
-                1000 if train else False,
+                128 if train else False,
             )  ## Create a buffer of 1k samples from the workers and shuffle them
             .decode()  ## Decode the data
             .to_tuple(*self.tar_keys)  ## Converting to tuple
