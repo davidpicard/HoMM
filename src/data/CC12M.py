@@ -1,5 +1,5 @@
 """Implements the normal data module."""
-
+import json
 import os
 import tarfile
 
@@ -116,9 +116,16 @@ class CC12MDataModule(L.LightningDataModule):
         if train:
             dir = "train" if os.path.isdir(f"{self.root_dir}/train") else "train_wds"
             files = sorted(glob(f"{self.root_dir}/{dir}/*.tar"))
+            json_file_path = f"{self.root_dir}/{dir}/{dir}.json"
+            with open(json_file_path, "r") as f:
+                self.train_dataset_size = json.load(f)
+
         else:
             dir = "val"
             files = sorted(glob(f"{self.root_dir}/{dir}/*.tar"))
+            json_file_path = f"{self.root_dir}/{dir}/{dir}.json"
+            with open(json_file_path, "r") as f:
+                self.val_dataset_size = json.load(f)
 
         # count = 0
         # for f in tqdm(files):
@@ -173,14 +180,14 @@ class CC12MDataModule(L.LightningDataModule):
                 num_workers=self.num_workers if train else 1,
                 batch_size=None,
             )
-            # .with_length(
-            #     (self.train_dataset_size if train else self.val_dataset_size)
-            #     // (batch_size * get_world_size())
-            # )
-            # .with_epoch(
-            #     (self.train_dataset_size if train else self.val_dataset_size)
-            #     // (batch_size * get_world_size())
-            # )
+            .with_length(
+                (self.train_dataset_size if train else self.val_dataset_size)
+                // (batch_size * get_world_size())
+            )
+            .with_epoch(
+                (self.train_dataset_size if train else self.val_dataset_size)
+                // (batch_size * get_world_size())
+            )
         )
 
         return loader
