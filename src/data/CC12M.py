@@ -123,7 +123,9 @@ class CC12MDataModule(L.LightningDataModule):
         count = 0
         for f in tqdm(files):
             with tarfile.open(f, 'r') as tar:
-                count += len(tar.getmembers())
+                # count += len(tar.getmembers())
+                for m in tar:
+                    count +=1
         if train:
             self.train_dataset_size = count//6
         else:
