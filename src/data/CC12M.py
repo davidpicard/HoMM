@@ -70,8 +70,8 @@ class CC12MDataModule(L.LightningDataModule):
 
         self.max_text_embedding_tokens = max_text_embedding_tokens
         self.embedding_size = embedding_size
-        self.batch_size = batch_size//get_world_size()
-        self.val_batch_size = val_batch_size//get_world_size()
+        self.batch_size = batch_size
+        self.val_batch_size = val_batch_size
         self.num_workers = num_workers
         self.tar_keys = (
             [
