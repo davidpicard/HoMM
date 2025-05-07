@@ -10,6 +10,7 @@ import webdataset as wds
 from functools import partial
 import lightning.pytorch as L
 from torch.distributed import get_world_size
+from tqdm import tqdm
 
 ## Implements the collate function ##
 def collate_fn(batch, max_text_embedding_tokens=64, embedding_size=2048):
@@ -120,7 +121,7 @@ class CC12MDataModule(L.LightningDataModule):
             files = sorted(glob(f"{self.root_dir}/{dir}/*.tar"))
 
         count = 0
-        for f in files:
+        for f in tqdm(files):
             with tarfile.open(f, 'r') as tar:
                 count += len(tar.getmembers())
         if train:
