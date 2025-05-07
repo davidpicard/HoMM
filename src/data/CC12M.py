@@ -34,11 +34,6 @@ def collate_fn(batch, max_text_embedding_tokens=64, embedding_size=2048):
     ## Batch and return the data ##
     batch = {}
     batch["img_latents"] = torch.as_tensor(np.stack(img_latents), dtype=torch.float).contiguous()
-    # batch["text_embeddings"] = torch.nested.nested_tensor(
-    #     list(text_embeddings), dtype=torch.float
-    # ).to_padded_tensor(
-    #     padding=0.0, output_size=(batch_size, max_text_embedding_tokens, embedding_size)
-    # ).contiguous()
     batch["text_embeddings"] = torch.stack(text_embeddings).contiguous()
     batch["masks"] = torch.stack(masks).contiguous()
     batch["txt"] = txt
