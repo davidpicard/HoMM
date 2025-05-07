@@ -4,6 +4,7 @@ import os
 import tarfile
 
 import torch
+import torch.nn.functional as F
 import numpy as np
 from glob import glob
 import webdataset as wds
@@ -33,11 +34,12 @@ def collate_fn(batch, max_text_embedding_tokens=64, embedding_size=2048):
     ## Batch and return the data ##
     batch = {}
     batch["img_latents"] = torch.as_tensor(np.stack(img_latents), dtype=torch.float).contiguous()
-    batch["text_embeddings"] = torch.nested.nested_tensor(
-        list(text_embeddings), dtype=torch.float
-    ).to_padded_tensor(
-        padding=0.0, output_size=(batch_size, max_text_embedding_tokens, embedding_size)
-    ).contiguous()
+    # batch["text_embeddings"] = torch.nested.nested_tensor(
+    #     list(text_embeddings), dtype=torch.float
+    # ).to_padded_tensor(
+    #     padding=0.0, output_size=(batch_size, max_text_embedding_tokens, embedding_size)
+    # ).contiguous()
+    batch["text_embeddings"] = torch.stack(text_embeddings).contiguous()
     batch["masks"] = torch.stack(masks).contiguous()
     batch["txt"] = txt
 
@@ -99,6 +101,9 @@ class CC12MDataModule(L.LightningDataModule):
 
         ## Retrieving the token length of the condition ##
         text_embedding_length = len(condition)
+
+        # pad condition
+        condition = F.pad(torch.as_tensor(condition, dtype=torch.float), (0, 0, 0, self.max_text_embedding_tokens-text_embedding_length), "constant", 0)
 
         ## Making the mask ##
         mask = torch.arange(self.max_text_embedding_tokens) < text_embedding_length
