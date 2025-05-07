@@ -120,16 +120,16 @@ class CC12MDataModule(L.LightningDataModule):
             dir = "val"
             files = sorted(glob(f"{self.root_dir}/{dir}/*.tar"))
 
-        count = 0
-        for f in tqdm(files):
-            with tarfile.open(f, 'r') as tar:
-                # count += len(tar.getmembers())
-                for m in tar:
-                    count +=1
-        if train:
-            self.train_dataset_size = count//6
-        else:
-            self.val_dataset_size = count//6
+        # count = 0
+        # for f in tqdm(files):
+        #     with tarfile.open(f, 'r') as tar:
+        #         # count += len(tar.getmembers())
+        #         for m in tar:
+        #             count +=1
+        # if train:
+        #     self.train_dataset_size = count//6
+        # else:
+        #     self.val_dataset_size = count//6
 
         first_tar_name = os.path.basename(files[0]).split(".")[0]
         last_tar_name = os.path.basename(files[-1]).split(".")[0]
@@ -173,14 +173,14 @@ class CC12MDataModule(L.LightningDataModule):
                 num_workers=self.num_workers if train else 1,
                 batch_size=None,
             )
-            .with_length(
-                (self.train_dataset_size if train else self.val_dataset_size)
-                // (batch_size * get_world_size())
-            )
-            .with_epoch(
-                (self.train_dataset_size if train else self.val_dataset_size)
-                // (batch_size * get_world_size())
-            )
+            # .with_length(
+            #     (self.train_dataset_size if train else self.val_dataset_size)
+            #     // (batch_size * get_world_size())
+            # )
+            # .with_epoch(
+            #     (self.train_dataset_size if train else self.val_dataset_size)
+            #     // (batch_size * get_world_size())
+            # )
         )
 
         return loader
