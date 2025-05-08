@@ -77,7 +77,7 @@ class T2IDiffusionModule(L.LightningModule):
         pred = self.model(n_img, time, txt_latents, mask)
 
         target = (eps - img_latents)
-        loss = {"loss": ((target - pred)**2).mean()}
+        loss = {"loss": ((target - pred)**2).clamp(-1, 2).mean()}
 
         for metric_name, metric_value in loss.items():
             self.log(
@@ -116,7 +116,7 @@ class T2IDiffusionModule(L.LightningModule):
         pred = self.model(n_img, time, txt_latents, mask)
 
         target = (eps - img_latents)
-        loss = {"loss": ((target - pred)**2).mean()}
+        loss = {"loss": ((target - pred)**2).clamp(-1, 2).mean()}
 
         # logging
         for metric_name, metric_value in loss.items():
