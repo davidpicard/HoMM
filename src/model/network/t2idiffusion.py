@@ -40,10 +40,6 @@ class TextImageDiHBlock(nn.Module):
         x = x + self.ffw(x)*(1+self.gf)
         return x
 
-    def state_forward(self, x, t, c, mask, state=None):
-
-        return x, state
-
 
 class TextImageDiH(nn.Module):
     def __init__(self,
@@ -149,14 +145,6 @@ class TextImageDiH(nn.Module):
                                h=self.n_patches_h, w=self.n_patches_w, k=self.kernel_s, l=self.kernel_s)
 
         return out
-
-    def frame_by_frame_forward(self, vid, time, txt, mask):
-        b, c, t, h, w = vid.shape
-        # print(f"vid: {vid.shape}")
-
-
-
-        return vid
 
     def make_block_causal_temporal_mask(self):
         total_tokens = self.n_patches_h*self.n_patches_w*self.n_frames
