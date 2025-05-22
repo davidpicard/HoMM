@@ -95,7 +95,7 @@ class TextImageDiH(nn.Module):
         # layers
         def init_weights_(m):
             if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight)
+                nn.init.xavier_normal_(m.weight)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
         self.apply(init_weights_)
