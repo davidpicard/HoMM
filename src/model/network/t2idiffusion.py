@@ -18,8 +18,8 @@ class TextImageDiHBlock(nn.Module):
         self.mha_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.x_mha_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.c_mha_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
-        self.hom = HoM(dim, order=order, order_expand=order_expand, bias=True)
-        self.c_hom = HoM(dim, order=order, order_expand=order_expand, bias=True)
+        self.hom = HoM(dim, order=order, order_expand=order_expand, bias=False)
+        self.c_hom = HoM(dim, order=order, order_expand=order_expand, bias=False)
         self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand * dim, bias=True),
                                  nn.GELU(),
                                  nn.Linear(ffw_expand * dim, dim, bias=True))
