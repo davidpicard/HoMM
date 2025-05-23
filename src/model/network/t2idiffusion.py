@@ -31,13 +31,13 @@ class TextImageDiHBlock(nn.Module):
     def forward(self, x, c, mask):
         # sa
         x_ln = self.mha_ln(x)
-        x = x + self.hom(x_ln) * (1 + self.gs)
+        x = x + self.hom(x_ln) * (self.gs)
         # ca
         x_ln = self.x_mha_ln(x)
         c_ln = self.c_mha_ln(c)
-        x = x + self.c_hom(x_ln, c_ln, mask) * (1 + self.gc)
+        x = x + self.c_hom(x_ln, c_ln, mask) * (self.gc)
         #ffw
-        x = x + self.ffw(x)*(1+self.gf)
+        x = x + self.ffw(x)*(self.gf)
         return x
 
 
