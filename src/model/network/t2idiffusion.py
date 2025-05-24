@@ -23,21 +23,21 @@ class TextImageDiHBlock(nn.Module):
         self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand * dim, bias=True),
                                  nn.GELU(),
                                  nn.Linear(ffw_expand * dim, dim, bias=True))
-        self.gs = nn.Parameter(torch.ones(1, 1, dim), requires_grad=True)
-        self.gc = nn.Parameter(torch.ones(1, 1, dim), requires_grad=True)
-        self.gf = nn.Parameter(torch.ones(1, 1, dim), requires_grad=True)
+        self.gs = nn.Parameter(-torch.ones(1, 1, dim), requires_grad=True)
+        self.gc = nn.Parameter(-torch.ones(1, 1, dim), requires_grad=True)
+        self.gf = nn.Parameter(-torch.ones(1, 1, dim), requires_grad=True)
 
 
     def forward(self, x, c, mask):
         # sa
         x_ln = self.mha_ln(x)
-        x = x + self.hom(x_ln) * (self.gs)
+        x = x + self.hom(x_ln) * (1+self.gs)
         # ca
         x_ln = self.x_mha_ln(x)
         c_ln = self.c_mha_ln(c)
-        x = x + self.c_hom(x_ln, c_ln, mask) * (self.gc)
+        x = x + self.c_hom(x_ln, c_ln, mask) * (1+self.gc)
         #ffw
-        x = x + self.ffw(x)*(self.gf)
+        x = x + self.ffw(x)*(1+self.gf)
         return x
 
 
