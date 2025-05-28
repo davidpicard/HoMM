@@ -96,7 +96,7 @@ class TextImageDiH(nn.Module):
         def init_weights_(m):
             if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
                 fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(m.weight)
-                nn.init.normal_(m.weight, std=0.1/np.sqrt(fan_in + fan_out))
+                nn.init.normal_(m.weight, std=0.5/np.sqrt(fan_in + fan_out))
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
         self.apply(init_weights_)
@@ -132,8 +132,9 @@ class TextImageDiH(nn.Module):
         t = self.time_emb(t).unsqueeze(1)
         # cond
         c = self.text_emb(txt)
+        # add time embedding
         c = torch.cat([t, c],dim=1)
-        mask = torch.cat([torch.ones(b, 1).to(mask.device), mask], dim=1)
+        mask = torch.cat([torch.zeros(b, 1).to(mask.device), mask], dim=1)
 
         # forward pass
         for l in range(self.n_layers):
