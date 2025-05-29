@@ -134,7 +134,7 @@ class TextImageDiH(nn.Module):
         c = self.text_emb(txt)
         # add time embedding
         c = torch.cat([t, c],dim=1)
-        mask = torch.cat([torch.zeros(b, 1).to(mask.device), mask], dim=1)
+        mask = torch.cat([torch.ones(b, 1).to(mask.device), mask], dim=1)
 
         # forward pass
         for l in range(self.n_layers):
