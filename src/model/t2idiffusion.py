@@ -70,7 +70,9 @@ class T2IDiffusionModule(L.LightningModule):
         # each sample gets a noise between i/b and i/(b=1) to have uniform time in batch
         # time = torch.linspace(0, (b-1)/b, b) + torch.rand(b)/b
         # time = (time*self.n_timesteps).to(img.device)
-        time = torch.randint(0, self.n_timesteps, (b,)).to(img_latents.device)
+        # time = torch.randint(0, self.n_timesteps, (b,)).to(img_latents.device)
+        # logit normal time sampling from SD3
+        time = torch.sigmoid(torch.randn((b,), device=img_latents.device)) * self.n_timesteps
         eps = torch.randn_like(img_latents)
         n_img = self.sampler.add_noise(img_latents, eps, time)
 
