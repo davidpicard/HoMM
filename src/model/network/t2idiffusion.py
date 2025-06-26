@@ -77,13 +77,12 @@ class TextImageDiH(nn.Module):
                                       nn.GELU(),
                                       nn.Linear(4*dim, dim, bias=True)
                                       )
-        # self.pos_mlp = nn.Sequential(nn.Linear(dim, 4*dim, bias=True),
-        #                               nn.GELU(),
-        #                               nn.Linear(4*dim, dim, bias=True)
-        #                               )
+        self.pos_mlp = nn.Sequential(nn.Linear(dim, 4*dim, bias=True),
+                                      nn.GELU(),
+                                      nn.Linear(4*dim, dim, bias=True)
+                                      )
         self.n_patches_h = (img_size[0] // kernel_s)
         self.n_patches_w = (img_size[1] // kernel_s)
-        self.pos = nn.Parameter(torch.randn(1, self.n_patches_h, self.n_patches_w, dim), requires_grad=True)
         # for diffusers
         self.in_channels = input_dim
         self.sample_size = (self.n_patches_h, self.n_patches_w)
@@ -96,16 +95,14 @@ class TextImageDiH(nn.Module):
         # layers
         def init_weights_(m):
             if isinstance(m, nn.Linear) or isinstance(m, nn.Conv2d):
-                # fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(m.weight)
-                # nn.init.normal_(m.weight, std=0.5/np.sqrt(fan_in + fan_out))
-                torch.nn.init.xavier_uniform_(m.weight)
+                fan_in, fan_out = nn.init._calculate_fan_in_and_fan_out(m.weight)
+                nn.init.normal_(m.weight, std=0.5/np.sqrt(fan_in + fan_out))
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
         self.apply(init_weights_)
         # patch, text and time emb
-        # nn.init.normal_(self.pos_mlp[0].weight, std=0.02)
-        # nn.init.normal_(self.pos_mlp[2].weight, std=0.02)
-        nn.init.trunc_normal_(self.pos, 0.0, 0.02)
+        nn.init.normal_(self.pos_mlp[0].weight, std=0.02)
+        nn.init.normal_(self.pos_mlp[2].weight, std=0.02)
         nn.init.normal_(self.text_emb[0].weight, std=0.02)
         nn.init.normal_(self.text_emb[2].weight, std=0.02)
         nn.init.normal_(self.time_emb[0].weight, std=0.02)
@@ -120,10 +117,9 @@ class TextImageDiH(nn.Module):
         # patchify
         x = einops.rearrange(img, "b c (h k) (w l) -> b (h w) (k l c)", k=self.kernel_s, l=self.kernel_s)
         x = self.in_proj(x)
-        # pos_emb = sincos_embedding_2d(self.n_patches_h, self.n_patches_w, self.dim).to(x.device)
-        # pos_emb = einops.rearrange(pos_emb, "b h w d -> b (h w) d")
-        # pos_emb = self.pos_mlp(pos_emb)
-        pos_emb = einops.rearrange(self.pos, "b h w d -> b (h w) d")
+        pos_emb = sincos_embedding_2d(self.n_patches_h, self.n_patches_w, self.dim).to(x.device)
+        pos_emb = einops.rearrange(pos_emb, "b h w d -> b (h w) d")
+        pos_emb = self.pos_mlp(pos_emb)
         x = x + pos_emb * torch.ones((b, 1, 1)).to(x.device)
 
         # registers
