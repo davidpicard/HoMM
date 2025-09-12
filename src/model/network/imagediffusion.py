@@ -3,7 +3,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from .layers import HoM
+# from .layers import HoM
+from .compom import ComPoM
 from timm.models.vision_transformer import Attention
 
 
@@ -211,7 +212,7 @@ class DiHBlock(nn.Module):
         self.ffw_expand = ffw_expand
 
         self.mha_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
-        self.hom = HoM(dim, order=order, order_expand=order_expand, bias=True)
+        self.hom = ComPoM(dim, degree=order, expand=order_expand, n_groups=1, n_sel_heads=dim, bias=False)
         self.ffw_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand * dim, bias=True),
                                  nn.GELU(),
