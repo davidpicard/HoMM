@@ -212,7 +212,7 @@ class DiHBlock(nn.Module):
         self.ffw_expand = ffw_expand
 
         self.mha_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
-        self.hom = ComPoM(dim, degree=order, expand=order_expand, n_groups=1, n_sel_heads=dim, bias=False)
+        self.hom = ComPoM(dim, degree=order, expand=order_expand, n_groups=1, n_sel_heads=1, bias=False)
         self.ffw_ln = nn.LayerNorm(dim, elementwise_affine=False, eps=1e-6)
         self.ffw = nn.Sequential(nn.Linear(dim, ffw_expand * dim, bias=True),
                                  nn.GELU(),

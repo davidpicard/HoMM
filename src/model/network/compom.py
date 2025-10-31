@@ -1,15 +1,18 @@
+import einops
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch._dynamo
 from typing import Optional, Tuple, Dict, Any
+from model.network.rotary import Rotary, apply_rotary_emb
+
 
 # =============================================================================
 # Core Polynomial Functions
 # =============================================================================
 
 def pom_activation(x: torch.Tensor) -> torch.Tensor:
-    return F.leaky_relu(x, 0.01, True)
+    return torch.clamp(F.leaky_relu(x, 0.01, True), min=-0.1, max=6)
 
 
 def po2(x: torch.Tensor, coeff: torch.Tensor) -> torch.Tensor:
@@ -78,7 +81,7 @@ def mask_mixer(h: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     Returns:
         Masked and aggregated tensor of shape (batch, 1, dim)
     """
-    return (h * mask.unsqueeze(-1)).sum(dim=1, keepdims=True) / (1.e-7 + mask.unsqueeze(-1).sum(dim=1, keepdims=True))
+    return (h * mask.unsqueeze(-1)).sum(dim=1, keepdims=True) / (mask.unsqueeze(-1).sum(dim=1, keepdims=True))
 
 
 def full_mask_mixer(h: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
@@ -94,7 +97,7 @@ def full_mask_mixer(h: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     """
     mask = mask.type(h.dtype)
     h = torch.einsum('bnd, bmn -> bmd', h, mask)  # b batch, n context tokens, m query tokens, d dim
-    h = h / (1.e-7 + mask.sum(dim=2, keepdims=True))
+    h = h / (mask.sum(dim=2, keepdims=True))
     return h
 
 
@@ -142,7 +145,7 @@ def polynomial_aggregation_(x: torch.Tensor, coeff: torch.Tensor, k: int,
     return h
 
 
-def polynomial_selection_(x: torch.Tensor, h: torch.Tensor, n_sel_heads: int) -> torch.Tensor:
+def polynomial_selection_(s: torch.Tensor, h: torch.Tensor, n_sel_heads: int) -> torch.Tensor:
     """
     Apply polynomial selection with sigmoid gating.
 
@@ -153,12 +156,14 @@ def polynomial_selection_(x: torch.Tensor, h: torch.Tensor, n_sel_heads: int) ->
     Returns:
         Gated output tensor
     """
-    s = F.sigmoid(x).unsqueeze(-1)
-    b, n, c, _ = s.shape
-    bb, nn, d = h.shape
-    h = h.view(bb, nn, c, -1)
-    # print(f"s: {s.shape} h: {h.shape}-{nn, d} s*h: {(s*h).shape}")
-    return (s * h).view(b, n, d)
+    if s.ndim < 4:
+        s = s.unsqueeze(2) # add 1 head
+    b, t, n, ds = s.shape
+    _, g, dh = h.shape
+    assert g == 1 or t == 1 or g == t, print(f"b: {b} t: {t} n: {n} ds: {ds} g: {g} dh: {dh}")
+    h = h.view(b, g, n_sel_heads, dh//n_sel_heads)
+    # print(f"s: {s.shape} h: {h.shape}")
+    return (s * h).view(b, max(g,t), dh)
 
 
 # =============================================================================
@@ -176,7 +181,7 @@ def pom(xq: torch.Tensor, xc: torch.Tensor, coeff: torch.Tensor, k: int, n_sel_h
     Args:
         xq: Query input tensor of shape (batch, query_len, dim)
         xc: Context input tensor of shape (batch, context_len, dim)
-        coeff: Polynomial coefficients of shape TODO
+        coeff: Polynomial coefficients of shape
         k: Polynomial order (degree of interactions to capture)
         mask: Optional attention mask for masking specific positions
 
@@ -191,6 +196,46 @@ def pom(xq: torch.Tensor, xc: torch.Tensor, coeff: torch.Tensor, k: int, n_sel_h
 # =============================================================================
 # ComPoM Module Class
 # =============================================================================
+#
+# class Rotary(torch.nn.Module):
+#     """Rotary position embeddings."""
+#
+#     def __init__(self, dim, base=10000):
+#         super().__init__()
+#         inv_freq = 1.0 / (base ** (torch.arange(0, dim, 2).float() / dim))
+#         self.register_buffer("inv_freq", inv_freq)
+#         self.seq_len_cached = None
+#         self.cos_cached = None
+#         self.sin_cached = None
+#
+#     def forward(self, x):
+#         seq_len = x.shape[1]
+#         if seq_len != self.seq_len_cached:
+#             self.seq_len_cached = seq_len
+#             t = torch.arange(seq_len, device=x.device).type_as(self.inv_freq)
+#             freqs = torch.outer(t, self.inv_freq).to(x.device)
+#             self.cos_cached = freqs.cos()
+#             self.sin_cached = freqs.sin()
+#         return self.cos_cached[None, :, None, :], self.sin_cached[None, :, None, :]
+#
+#
+# def apply_rotary_emb(x, cos, sin):
+#     """Apply rotary embeddings."""
+#     assert x.ndim == 4  # multihead attention
+#     d = x.shape[3] // 2
+#     x1 = x[..., :d]
+#     x2 = x[..., d:]
+#     y1 = x1 * cos + x2 * sin
+#     y2 = x1 * (-sin) + x2 * cos
+#     return torch.cat([y1, y2], 3)
+
+
+def rmsnorm(x0, eps=1e-3):
+    """RMS normalization function (matching reference implementation)."""
+    x = x0.float()
+    x = x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + eps)
+    return x.type_as(x0)
+
 
 class ComPoM(nn.Module):
     """
@@ -210,7 +255,7 @@ class ComPoM(nn.Module):
         pom (callable): The polynomial mixer operation function
     """
 
-    def __init__(self, dim: int, degree: int, expand: int, n_groups: int, n_sel_heads: int, bias: bool = False):
+    def __init__(self, dim: int, degree: int, expand: int, n_groups: int, n_sel_heads: int, bias: bool = False, layernorm=False, use_rope: bool = False):
         """
         Initialize the PoM module.
 
@@ -228,16 +273,27 @@ class ComPoM(nn.Module):
         self.n_sel_heads = n_sel_heads
         assert dim % n_groups == 0, "dim must be divisible by n_groups for group conv"
         assert dim * expand % n_sel_heads == 0, "dim * expand must be divisible by n_sel_heads"
+        self.head_dim = dim * expand // n_sel_heads if n_sel_heads>1 else dim*expand
 
         # Linear projections
         if self.n_groups > 1:
             self.po_proj = nn.Conv1d(dim, expand * dim, kernel_size=1, bias=bias, groups=n_groups)
         else:
             self.po_proj = nn.Linear(dim, expand * dim, bias=bias)
-        self.po_coeff = nn.Parameter((2.*torch.randn(dim * expand, degree)).clamp(-2., 2.))
-        self.se_proj = nn.Linear(dim, n_sel_heads, bias=bias)
+        self.po_coeff = nn.Parameter((torch.randn(dim * expand, degree)).clamp(-0.001, 0.001))
+        if n_sel_heads>1:
+            self.se_proj = nn.Linear(dim, n_sel_heads, bias=True)
+        else:
+            self.se_proj = nn.Linear(dim, expand*dim, bias=True)
         self.ag_proj = nn.Linear(expand * dim, dim, bias=bias)
         self.pom = pom
+        self.layernorm = layernorm
+        if layernorm:
+            print(f"using layernorm!")
+        self.use_rope = use_rope
+        if use_rope:
+            self.rotary = Rotary(self.head_dim)
+
 
     def forward(self, xq: torch.Tensor, xc: Optional[torch.Tensor] = None,
                 mask: Optional[torch.Tensor] = None) -> torch.Tensor:
@@ -255,11 +311,30 @@ class ComPoM(nn.Module):
         if xc is None:
             xc = xq  # self-attention
 
-        s = self.se_proj(xq)
         if self.n_groups > 1:
             h = self.po_proj(xc.transpose(1, 2)).transpose(1, 2)
         else:
             h = self.po_proj(xc)
+        if self.layernorm:
+            b, n, d = h.shape
+            h = rmsnorm(h.view(b, n, self.n_sel_heads, -1)).view(b, n, d)
+
+        s = F.hardsigmoid(self.se_proj(xq), inplace=True)
+
+        b, n, l = s.shape
+        if self.n_sel_heads > 1:
+            s = s.view(b, n, l, 1).expand((-1, -1, -1, self.head_dim))
+        else:
+            s = s.view(b, n, 1, l)
+        if self.use_rope:
+            # handle S
+            cos, sin = self.rotary(s)
+            s = apply_rotary_emb(s, cos, sin)
+            # handle H
+            h = einops.rearrange(h, 'b n (l d) -> b n l d', l=self.n_sel_heads)
+            cos, sin = self.rotary(h)
+            h = apply_rotary_emb(h, cos, sin)
+            h = einops.rearrange(h, 'b n l d -> b n (l d)')
         sh = self.pom(s, h, self.po_coeff, self.order, self.n_sel_heads, mask)
 
         return self.ag_proj(sh)
@@ -297,3 +372,51 @@ class ComPoM(nn.Module):
 
         sh = polynomial_selection_(s, h, self.n_sel_heads)
         return self.ag_proj(sh), new_state
+
+    @torch.no_grad
+    def ar_forward(self, xq, state):
+        # print(f"xq: {xq.shape}")
+        B, T, D = xq.size()
+        n_current = T
+        if self.n_groups > 1:
+            h = self.po_proj(xq.transpose(1, 2)).transpose(1, 2)
+        else:
+            h = self.po_proj(xq)
+        if self.layernorm:
+            b, n, d = h.shape
+            h = rmsnorm(h.view(b, n, self.n_sel_heads, -1)).view(b, n, d)
+
+        s = F.hardsigmoid(self.se_proj(xq), inplace=True)
+
+        h_past = state['h']
+        n_past = state['n']
+        current_pos = n_past + torch.arange(0, T, dtype=torch.long, device = xq.device)
+
+        if self.use_rope:
+            # handle S
+            b,n,l = s.shape
+            if self.n_sel_heads>1:
+                s = s.view(b, n, l, 1).expand((-1,-1,-1,self.head_dim))
+            else:
+                s = s.view(b, n, 1, l)
+            cos, sin = self.rotary.position_forward(current_pos, state['max_len'], device=xq.device)
+            s = apply_rotary_emb(s, cos, sin)
+            # handle H
+            h = einops.rearrange(h, 'b n (l d) -> b n l d', l=self.n_sel_heads)
+            cos, sin = self.rotary.position_forward(current_pos, state['max_len'], device=xq.device)
+            h = apply_rotary_emb(h, cos, sin)
+            h = einops.rearrange(h, 'b n l d -> b n (l d)')
+
+        h = polynomial_aggregation_(h, self.po_coeff, self.order)
+        h = (n_past*h_past + n_current*h)/(n_past + n_current)
+
+        new_state = {'max_len': state['max_len'], 'h': h, 'n': n_past+n_current}
+
+        sh = polynomial_selection_(s, h, self.n_sel_heads)
+        return self.ag_proj(sh), new_state
+
+    def reset(self, state):
+        state['h'] = 0.
+        state['n'] = 0
+        return state
+
