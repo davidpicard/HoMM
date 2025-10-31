@@ -16,7 +16,7 @@ trainer:
   num_nodes: ${computer.num_nodes}
   precision: ${computer.precision}
   gradient_clip_val: 1.0
-  accumulate_grad_batches: 0
+  accumulate_grad_batches: 1
   
 checkpoints:
   _target_: lightning.pytorch.callbacks.ModelCheckpoint
