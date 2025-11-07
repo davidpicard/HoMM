@@ -5,7 +5,7 @@ import argparse
 from tqdm import tqdm
 from model.network.imagediffusion import DiH_models, DiT_models
 from torch.optim import AdamW
-
+torch.set_float32_matmul_precision('high')
 device = torch.device("cuda")
 
 parser = argparse.ArgumentParser()
@@ -23,121 +23,125 @@ model_name = args.model
 
 results = []
 
-for d in dims:
-    gen = torch.Generator()
-    gen.manual_seed(3407)
+with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
+    for d in dims:
+        gen = torch.Generator()
+        gen.manual_seed(3407)
 
-    target = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
+        target = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
 
-    model = DiH_models[f"DiH-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
-    model = model.to(device)
-    model.compile()
-    opt = AdamW(model.parameters(), lr=0.0001)
+        model = DiH_models[f"DiH-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
+        for m in model.layers:
+            m.compile()
+        model = model.to(device)
+        opt = AdamW(model.parameters(), lr=0.0001)
 
-    # warmup
-    print(f"Warmup d: {d}")
-    for b in tqdm(range(10)):
-        x = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
-        c = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
-        t = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
+        # warmup
+        print(f"Warmup d: {d}")
+        for b in tqdm(range(10)):
+            x = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
+            c = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
+            t = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
 
-        y_pred = model(x, c, t)
+            y_pred = model(x, c, t)
 
-        model.zero_grad()
-        l2 = (target - y_pred).square().mean()
-        l2.backward()
-        opt.step()
+            model.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
 
-    print(f"Test d: {d}")
-    count = []
-    for b in tqdm(range(loop)):
-        x = torch.randn((batch_size, 4, d, d)).to(device)
-        c = torch.randint(0, 1000, (batch_size,)).to(device)
-        t = torch.randint(0, 1000, (batch_size,)).to(device)
+        print(f"Test d: {d} (={d*16})")
+        count = []
+        for b in tqdm(range(loop)):
+            x = torch.randn((batch_size, 4, d, d)).to(device)
+            c = torch.randint(0, 1000, (batch_size,)).to(device)
+            t = torch.randint(0, 1000, (batch_size,)).to(device)
 
-        start_time = time.perf_counter()
-        y_pred = model(x, c, t)
-        tmp = y_pred.cpu()
-        if not args.backward:
-            end_time = time.perf_counter()
-            elapsed = end_time - start_time
+            start_time = time.perf_counter()
+            y_pred = model(x, c, t)
+            tmp = y_pred.cpu()
+            if not args.backward:
+                end_time = time.perf_counter()
+                elapsed = end_time - start_time
 
-        model.zero_grad()
-        l2 = (target - y_pred).square().mean()
-        l2.backward()
-        opt.step()
-        if args.backward:
-            end_time = time.perf_counter()
-            elapsed = end_time - start_time
+            model.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
+            if args.backward:
+                end_time = time.perf_counter()
+                elapsed = end_time - start_time
 
-        count.append(elapsed)
-    elapsed = np.sum(count)
-    print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
-    results.append(elapsed/batch_size/loop)
+            count.append(elapsed)
+        elapsed = np.sum(count)
+        print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
+        results.append(elapsed/batch_size/loop)
 
-print(f"DiH images: {dims*16}")
-print(f"DiH tokens: {dims**2}")
-print(f"DiH s/image: {results}")
-for i in range(len(dims)):
-    print(f"({dims[i]*16}, {results[i]})")
+    print(f"DiH images: {dims*16}")
+    print(f"DiH tokens: {dims**2}")
+    print(f"DiH s/image: {results}")
+    for i in range(len(dims)):
+        print(f"({dims[i]*16}, {results[i]})")
 
-results = []
+    results = []
 
-for d in dims:
-    gen = torch.Generator()
-    gen.manual_seed(3407)
+    for d in dims:
+        gen = torch.Generator()
+        gen.manual_seed(3407)
 
-    target = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
+        target = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
 
-    model = DiT_models[f"DiT-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
-    model = model.to(device)
-    opt = AdamW(model.parameters(), lr=0.0001)
+        model = DiT_models[f"DiT-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
+        for m in model.layers:
+            m.compile()
+        model = model.to(device)
+        opt = AdamW(model.parameters(), lr=0.0001)
 
-    # warmup
-    print(f"Warmup d: {d}")
-    for b in tqdm(range(10)):
-        x = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
-        c = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
-        t = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
+        # warmup
+        print(f"Warmup d: {d}")
+        for b in tqdm(range(10)):
+            x = torch.randn((batch_size, 4, d, d), generator=gen).to(device)
+            c = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
+            t = torch.randint(0, 1000, (batch_size,), generator=gen).to(device)
 
-        y_pred = model(x, c, t)
+            y_pred = model(x, c, t)
 
-        model.zero_grad()
-        l2 = (target - y_pred).square().mean()
-        l2.backward()
-        opt.step()
+            model.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
 
 
-    print(f"Test d: {d}")
-    count = []
-    for b in tqdm(range(loop)):
-        x = torch.randn((batch_size, 4, d, d)).to(device)
-        c = torch.randint(0, 1000, (batch_size,)).to(device)
-        t = torch.randint(0, 1000, (batch_size,)).to(device)
+        print(f"Test d: {d} (={d*16})")
+        count = []
+        for b in tqdm(range(loop)):
+            x = torch.randn((batch_size, 4, d, d)).to(device)
+            c = torch.randint(0, 1000, (batch_size,)).to(device)
+            t = torch.randint(0, 1000, (batch_size,)).to(device)
 
-        start_time = time.perf_counter()
-        y_pred = model(x, c, t)
-        tmp = y_pred[0].cpu()
-        if not args.backward:
-            end_time = time.perf_counter()
-            elapsed = end_time - start_time
+            start_time = time.perf_counter()
+            y_pred = model(x, c, t)
+            tmp = y_pred[0].cpu()
+            if not args.backward:
+                end_time = time.perf_counter()
+                elapsed = end_time - start_time
 
-        model.zero_grad()
-        l2 = (target - y_pred).square().mean()
-        l2.backward()
-        opt.step()
-        if args.backward:
-            end_time = time.perf_counter()
-            elapsed = end_time - start_time
+            model.zero_grad()
+            l2 = (target - y_pred).square().mean()
+            l2.backward()
+            opt.step()
+            if args.backward:
+                end_time = time.perf_counter()
+                elapsed = end_time - start_time
 
-        count.append(elapsed)
-    elapsed = np.sum(count)
-    print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
-    results.append(elapsed/batch_size/loop)
+            count.append(elapsed)
+        elapsed = np.sum(count)
+        print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/batch_size/loop} s/image")
+        results.append(elapsed/batch_size/loop)
 
-print(f"DiT images: {dims*16}")
-print(f"DiT tokens: {dims**2}")
-print(f"DiT s/image: {results}")
-for i in range(len(dims)):
-    print(f"({dims[i]*16}, {results[i]})")
+    print(f"DiT images: {dims*16}")
+    print(f"DiT tokens: {dims**2}")
+    print(f"DiT s/image: {results}")
+    for i in range(len(dims)):
+        print(f"({dims[i]*16}, {results[i]})")
 
