@@ -31,6 +31,7 @@ for d in dims:
 
     model = DiH_models[f"DiH-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
     model = model.to(device)
+    model.compile()
     opt = AdamW(model.parameters(), lr=0.0001)
 
     # warmup
