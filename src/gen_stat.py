@@ -24,9 +24,9 @@ vae.vae.compile()
 inception = FeatureExtractorInceptionV3("inception_model", ["2048"]).to("cuda")
 inception.eval()
 
-spatial_features = []
+spatial_features = {}
 def get_spatial_features(model, input, output):
-    spatial_features.append(output)
+    spatial_features['spred'] = output
 inception.Mixed_6d.branch1x1.register_forward_hook(get_spatial_features)
 
 mu = []
@@ -43,7 +43,7 @@ with torch.no_grad():
             pred, = inception(img)
 
         pred = pred.cpu().numpy()
-        spred = spatial_features.pop().movedim(1, -1)[..., :7].cpu().numpy().reshape([pred.shape[0], -1])
+        spred = spatial_features['spred'].movedim(1, -1)[..., :7].cpu().numpy().reshape([pred.shape[0], -1])
         mu.append(np.mean(pred, axis=0))
         sig.append(np.cov(pred, rowvar=False))
         mu_s.append(np.mean(spred, axis=0))
