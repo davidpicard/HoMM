@@ -17,7 +17,7 @@ out = sys.argv[2]
 batch_size=50
 
 train = TarDataset(path)
-train = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8)
+train = DataLoader(train, batch_size=batch_size, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=True)
 
 vae = VAE().to("cuda")
 vae.vae.compile()
@@ -35,7 +35,8 @@ mu_s = []
 sig_s = []
 i = 1
 with torch.no_grad():
-    for b in tqdm(train):
+    t = tqdm(train)
+    for b in t:
         x, y = b
         img = vae.vae_decode(x.to("cuda"))
         img = (255*img).to(torch.uint8)
@@ -51,6 +52,7 @@ with torch.no_grad():
         i += 1
         if i > 1000:
             break
+        t.set_postfix_str(s=f"mu: {len(mu)} sig: {len(sig)}")
 
     mu = np.stack(mu, axis=0)
     sig = np.stack(sig, axis=0)
