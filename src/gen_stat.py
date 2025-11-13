@@ -51,7 +51,7 @@ with torch.no_grad():
         mu_s += (np.mean(spred, axis=0))
         sig_s += (np.cov(spred, rowvar=False))
         i += 1
-        if i >= 50:
+        if i >= 500:
             break
         t.set_postfix_str(s=f"mu: {len(mu)} sig: {len(sig)}")
 
