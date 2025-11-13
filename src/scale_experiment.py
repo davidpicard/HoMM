@@ -28,7 +28,7 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         gen = torch.Generator()
         gen.manual_seed(3407)
         idx = idx+1
-        bs = batch_size//(idx**2)
+        bs = batch_size//(2**idx)
 
         target = torch.randn((bs, 4, d, d), generator=gen).to(device)
 
@@ -94,7 +94,7 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         gen = torch.Generator()
         gen.manual_seed(3407)
         idx = idx+1
-        bs = batch_size//(idx**2)
+        bs = batch_size//(2**idx)
 
         target = torch.randn((bs, 4, d, d), generator=gen).to(device)
 
