@@ -28,9 +28,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         gen = torch.Generator()
         gen.manual_seed(3407)
         idx = idx+1
-        b = batch_size//(idx**2)
+        bs = batch_size//(idx**2)
 
-        target = torch.randn((b, 4, d, d), generator=gen).to(device)
+        target = torch.randn((bs, 4, d, d), generator=gen).to(device)
 
         model = DiH_models[f"DiH-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
         for m in model.layers:
@@ -41,9 +41,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         # warmup
         print(f"Warmup d: {d}")
         for b in tqdm(range(10)):
-            x = torch.randn((b, 4, d, d), generator=gen).to(device)
-            c = torch.randint(0, 1000, (b,), generator=gen).to(device)
-            t = torch.randint(0, 1000, (b,), generator=gen).to(device)
+            x = torch.randn((bs, 4, d, d), generator=gen).to(device)
+            c = torch.randint(0, 1000, (bs,), generator=gen).to(device)
+            t = torch.randint(0, 1000, (bs,), generator=gen).to(device)
 
             y_pred = model(x, c, t)
 
@@ -55,9 +55,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         print(f"Test d: {d} (={d*16})")
         count = []
         for b in tqdm(range(loop)):
-            x = torch.randn((b, 4, d, d)).to(device)
-            c = torch.randint(0, 1000, (b,)).to(device)
-            t = torch.randint(0, 1000, (b,)).to(device)
+            x = torch.randn((bs, 4, d, d)).to(device)
+            c = torch.randint(0, 1000, (bs,)).to(device)
+            t = torch.randint(0, 1000, (bs,)).to(device)
 
             start_time = time.perf_counter()
             y_pred = model(x, c, t)
@@ -76,9 +76,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
 
             count.append(elapsed)
         elapsed = np.sum(count)
-        print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/b/loop} s/image")
-        print(f"tokens: {d*d}, tok/s: {d*d/(elapsed/b/loop)}")
-        results.append(elapsed/b/loop)
+        print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/bs/loop} s/image")
+        print(f"tokens: {d*d}, tok/s: {d*d/(elapsed/bs/loop)}")
+        results.append(elapsed/bs/loop)
 
     print(f"DiH images: {dims*16}")
     print(f"DiH tokens: {dims**2}")
@@ -94,9 +94,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         gen = torch.Generator()
         gen.manual_seed(3407)
         idx = idx+1
-        b = batch_size//(idx**2)
+        bs = batch_size//(idx**2)
 
-        target = torch.randn((b, 4, d, d), generator=gen).to(device)
+        target = torch.randn((bs, 4, d, d), generator=gen).to(device)
 
         model = DiT_models[f"DiT-{model_name}"](input_dim=4, n_classes=1000, im_size=d)
         for m in model.layers:
@@ -107,9 +107,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         # warmup
         print(f"Warmup d: {d}")
         for b in tqdm(range(10)):
-            x = torch.randn((b, 4, d, d), generator=gen).to(device)
-            c = torch.randint(0, 1000, (b,), generator=gen).to(device)
-            t = torch.randint(0, 1000, (b,), generator=gen).to(device)
+            x = torch.randn((bs, 4, d, d), generator=gen).to(device)
+            c = torch.randint(0, 1000, (bs,), generator=gen).to(device)
+            t = torch.randint(0, 1000, (bs,), generator=gen).to(device)
 
             y_pred = model(x, c, t)
 
@@ -122,9 +122,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
         print(f"Test d: {d} (={d*16})")
         count = []
         for b in tqdm(range(loop)):
-            x = torch.randn((b, 4, d, d)).to(device)
-            c = torch.randint(0, 1000, (b,)).to(device)
-            t = torch.randint(0, 1000, (b,)).to(device)
+            x = torch.randn((bs, 4, d, d)).to(device)
+            c = torch.randint(0, 1000, (bs,)).to(device)
+            t = torch.randint(0, 1000, (bs,)).to(device)
 
             start_time = time.perf_counter()
             y_pred = model(x, c, t)
@@ -143,9 +143,9 @@ with torch.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=True):
 
             count.append(elapsed)
         elapsed = np.sum(count)
-        print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/b/loop} s/image")
-        print(f"tokens: {d * d}, tok/s: {d * d / (elapsed / b / loop)}")
-        results.append(elapsed/b/loop)
+        print(f"d: {d}, tokens: {d*d}, elapsed: {elapsed} s, {elapsed/loop} s/batch, {elapsed/bs/loop} s/image")
+        print(f"tokens: {d * d}, tok/s: {d * d / (elapsed / bs / loop)}")
+        results.append(elapsed/bs/loop)
 
     print(f"DiT images: {dims*16}")
     print(f"DiT tokens: {dims**2}")
