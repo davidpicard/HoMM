@@ -30,11 +30,11 @@ def get_spatial_features(model, input, output):
     spatial_features['spred'] = output
 inception.Mixed_6d.branch1x1.register_forward_hook(get_spatial_features)
 
-mu = []
-sig = []
-mu_s = []
-sig_s = []
-i = 1
+mu = 0
+sig = 0
+mu_s = 0
+sig_s = 0
+i = 0
 with torch.no_grad():
     t = tqdm(train)
     for b in t:
@@ -46,28 +46,21 @@ with torch.no_grad():
 
         pred = pred.cpu().numpy()
         spred = spatial_features['spred'].movedim(1, -1)[..., :7].cpu().numpy().reshape([pred.shape[0], -1])
-        mu.append(np.mean(pred, axis=0))
-        sig.append(np.cov(pred, rowvar=False))
-        mu_s.append(np.mean(spred, axis=0))
-        sig_s.append(np.cov(spred, rowvar=False))
+        mu += (np.mean(pred, axis=0))
+        sig += (np.cov(pred, rowvar=False))
+        mu_s += (np.mean(spred, axis=0))
+        sig_s += (np.cov(spred, rowvar=False))
         i += 1
-        if i > 500:
+        if i >= 50:
             break
         t.set_postfix_str(s=f"mu: {len(mu)} sig: {len(sig)}")
 
     gc.collect()
     print(f" computing stats")
-    mu = np.stack(mu, axis=0)
-    sig = np.stack(sig, axis=0)
-    mu_s = np.stack(mu_s, axis=0)
-    sig_s = np.stack(sig_s, axis=0)
-
-    # aggregate
-
-    mu = mu.mean(axis=0)
-    sig = sig.sum(axis=0) * (batch_size-1) / (i*batch_size - 1)
-    mu_s = mu_s.mean(axis=0)
-    sig_s = sig_s.sum(axis=0)* (batch_size-1) / (i*batch_size - 1)
+    mu = mu / i
+    sig = sig * (batch_size-1) / (i*batch_size - 1)
+    mu_s = mu_s / i
+    sig_s = sig_s * (batch_size-1) / (i*batch_size - 1)
 
     print(f"mu: {mu.shape}")
     print(f"sig: {sig.shape}")
