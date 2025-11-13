@@ -7,6 +7,7 @@ from scipy import linalg
 from tqdm.auto import tqdm
 import sys
 from typing import Iterable, Optional, Tuple
+import gc
 
 from data.TarDataset import TarDataset
 from model.diffusion import VAE
@@ -14,7 +15,7 @@ from model.diffusion import VAE
 path = sys.argv[1]
 out = sys.argv[2]
 
-batch_size=50
+batch_size=100
 
 train = TarDataset(path)
 train = DataLoader(train, batch_size=batch_size, shuffle=False, num_workers=8, persistent_workers=True, pin_memory=True)
@@ -50,10 +51,12 @@ with torch.no_grad():
         mu_s.append(np.mean(spred, axis=0))
         sig_s.append(np.cov(spred, rowvar=False))
         i += 1
-        if i > 1000:
+        if i > 500:
             break
         t.set_postfix_str(s=f"mu: {len(mu)} sig: {len(sig)}")
 
+    gc.collect()
+    print(f" computing stats")
     mu = np.stack(mu, axis=0)
     sig = np.stack(sig, axis=0)
     mu_s = np.stack(mu_s, axis=0)
