@@ -20,6 +20,7 @@ train = TarDataset(path)
 train = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8)
 
 vae = VAE().to("cuda")
+vae.vae.compile()
 inception = FeatureExtractorInceptionV3("inception_model", ["2048"]).to("cuda")
 inception.eval()
 
