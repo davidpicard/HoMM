@@ -14,7 +14,7 @@ from model.diffusion import VAE
 path = sys.argv[1]
 out = sys.argv[2]
 
-batch_size=200
+batch_size=50
 
 train = TarDataset(path)
 train = DataLoader(train, batch_size=batch_size, shuffle=True, num_workers=8)
@@ -49,7 +49,7 @@ with torch.no_grad():
         mu_s.append(np.mean(spred, axis=0))
         sig_s.append(np.cov(spred, rowvar=False))
         i += 1
-        if i > 5000:
+        if i > 1000:
             break
 
     mu = np.stack(mu, axis=0)
